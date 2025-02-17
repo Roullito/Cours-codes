@@ -1,79 +1,64 @@
 # Liste des Fonctions en C
 
 ## 📌 Introduction
-Ce document répertorie les principales fonctions en langage C, organisées par catégories. Chaque fonction est un lien vers sa documentation détaillée.
+Ce document répertorie les principales fonctions en langage C, organisées par catégories. Chaque fonction est accompagnée de sa description, de ses options et d'un exemple d'utilisation.
 
 ---
 
 ## 🔹 1. Fonctions d'Entrée/Sortie (I/O)
-| Fonction | Description |
-|----------|------------|
-| [`printf`](https://man7.org/linux/man-pages/man3/printf.3.html) | Affiche du texte formaté sur la sortie standard. Exemples de format : `%d` (entier), `%f` (flottant), `%s` (chaîne). |
-| [`scanf`](https://man7.org/linux/man-pages/man3/scanf.3.html) | Lit des entrées avec un format spécifique. Exemples : `%d` (entier), `%f` (flottant), `%s` (chaîne). |
-| [`puts`](https://man7.org/linux/man-pages/man3/puts.3.html) | Affiche une chaîne de caractères suivie d'un retour à la ligne. |
-| [`gets`](https://man7.org/linux/man-pages/man3/gets.3.html) | Lit une ligne de texte (⚠️ dangereuse, ne pas utiliser). |
-| [`fgets`](https://man7.org/linux/man-pages/man3/fgets.3.html) | Lit une ligne de texte en spécifiant la taille maximale. |
-| [`putchar`](https://man7.org/linux/man-pages/man3/putchar.3.html) | Affiche un caractère unique sur la sortie standard. |
-| [`getchar`](https://man7.org/linux/man-pages/man3/getchar.3.html) | Lit un caractère depuis l'entrée standard. |
-| [`fprintf`](https://man7.org/linux/man-pages/man3/fprintf.3.html) | Écrit du texte formaté dans un fichier. |
-| [`fscanf`](https://man7.org/linux/man-pages/man3/fscanf.3.html) | Lit des données depuis un fichier avec un format spécifique. |
-| [`fopen`](https://man7.org/linux/man-pages/man3/fopen.3.html) | Ouvre un fichier. |
-| [`fclose`](https://man7.org/linux/man-pages/man3/fclose.3.html) | Ferme un fichier ouvert. |
-| [`fwrite`](https://man7.org/linux/man-pages/man3/fwrite.3.html) | Écrit des données binaires dans un fichier. |
-| [`fread`](https://man7.org/linux/man-pages/man3/fread.3.html) | Lit des données binaires depuis un fichier. |
+| Fonction  | Description | Options | Exemples |
+|-----------|------------|---------|----------|
+| `printf()` | Affiche du texte formaté sur la sortie standard | `%d` = entier, `%f` = flottant, `%s` = chaîne, `%c` = caractère | `printf("Valeur: %d", 10);` |
+| `scanf()` | Lit des entrées formatées | `%d` = entier, `%f` = flottant, `%s` = chaîne | `scanf("%d", &valeur);` |
+| `puts()` | Affiche une chaîne avec retour à la ligne | Aucune | `puts("Hello World");` |
+| `fgets()` | Lit une ligne avec une taille maximale | `(char *str, int size, FILE *stream)` | `fgets(buffer, 50, stdin);` |
+| `putchar()` | Affiche un caractère unique | `(char c)` | `putchar('A');` |
+| `getchar()` | Lit un caractère depuis l'entrée standard | Aucun | `char c = getchar();` |
 
 ---
 
 ## 🔹 2. Fonctions de Manipulation de Chaînes
-| Fonction | Description |
-|----------|------------|
-| [`strlen`](https://man7.org/linux/man-pages/man3/strlen.3.html) | Retourne la longueur d'une chaîne de caractères. |
-| [`strcpy`](https://man7.org/linux/man-pages/man3/strcpy.3.html) | Copie une chaîne dans une autre. |
-| [`strncpy`](https://man7.org/linux/man-pages/man3/strncpy.3.html) | Copie une chaîne avec une limite de taille. |
-| [`strcat`](https://man7.org/linux/man-pages/man3/strcat.3.html) | Concatène deux chaînes de caractères. |
-| [`strcmp`](https://man7.org/linux/man-pages/man3/strcmp.3.html) | Compare deux chaînes de caractères. |
-| [`strchr`](https://man7.org/linux/man-pages/man3/strchr.3.html) | Cherche un caractère dans une chaîne. |
-| [`strstr`](https://man7.org/linux/man-pages/man3/strstr.3.html) | Cherche une sous-chaîne dans une chaîne. |
+| Fonction  | Description | Options | Exemples |
+|-----------|------------|---------|----------|
+| `strlen()` | Retourne la longueur d'une chaîne | `(const char *str)` | `int len = strlen("Hello");` |
+| `strcpy()` | Copie une chaîne dans une autre | `(char *dest, const char *src)` | `strcpy(dest, "Texte");` |
+| `strcat()` | Concatène deux chaînes | `(char *dest, const char *src)` | `strcat(dest, " suite");` |
 
 ---
 
 ## 🔹 3. Fonctions Mathématiques
-| Fonction | Description |
-|----------|------------|
-| [`sizeof`](https://en.cppreference.com/w/c/language/sizeof) | Retourne la taille en octets d'un type ou d'une variable. |
-| [`sqrt`](https://man7.org/linux/man-pages/man3/sqrt.3.html) | Calcule la racine carrée. |
-| [`pow`](https://man7.org/linux/man-pages/man3/pow.3.html) | Calcule la puissance. |
-| [`abs`](https://man7.org/linux/man-pages/man3/abs.3.html) | Retourne la valeur absolue d'un entier. |
-| [`ceil`](https://man7.org/linux/man-pages/man3/ceil.3.html) | Arrondit un nombre vers le haut. |
-| [`floor`](https://man7.org/linux/man-pages/man3/floor.3.html) | Arrondit un nombre vers le bas. |
+| Fonction  | Description | Options | Exemples |
+|-----------|------------|---------|----------|
+| `sizeof()` | Retourne la taille en octets d'un type ou d'une variable | `(type)` ou `(variable)` | `printf("%lu", sizeof(int));` |
+| `sqrt()` | Calcule la racine carrée | `(double x)` | `double r = sqrt(25.0);` |
+| `pow()` | Calcule la puissance | `(double base, double exp)` | `double p = pow(2, 3);` |
 
 ---
 
 ## 🔹 4. Fonctions de Gestion de Mémoire
-| Fonction | Description |
-|----------|------------|
-| [`malloc`](https://man7.org/linux/man-pages/man3/malloc.3.html) | Alloue dynamiquement de la mémoire. |
-| [`free`](https://man7.org/linux/man-pages/man3/free.3.html) | Libère de la mémoire allouée dynamiquement. |
+| Fonction  | Description | Options | Exemples |
+|-----------|------------|---------|----------|
+| `malloc()` | Alloue dynamiquement de la mémoire | `(size_t size)` | `int *ptr = malloc(10 * sizeof(int));` |
+| `free()` | Libère la mémoire allouée | `(void *ptr)` | `free(ptr);` |
 
 ---
 
 ## 🔹 5. Fonctions de Gestion de Processus
-| Fonction | Description |
-|----------|------------|
-| [`exit`](https://man7.org/linux/man-pages/man3/exit.3.html) | Termine le programme immédiatement. |
-| [`system`](https://man7.org/linux/man-pages/man3/system.3.html) | Exécute une commande système. |
-| [`fork`](https://man7.org/linux/man-pages/man3/fork.3.html) | Crée un processus fils. |
+| Fonction  | Description | Options | Exemples |
+|-----------|------------|---------|----------|
+| `exit()` | Termine le programme immédiatement | `(int status)` | `exit(0);` |
+| `system()` | Exécute une commande système | `(const char *command)` | `system("ls");` |
 
 ---
 
 ## 🔹 6. Fonctions de Gestion du Temps
-| Fonction | Description |
-|----------|------------|
-| [`time`](https://man7.org/linux/man-pages/man3/time.3.html) | Retourne l'heure actuelle en secondes depuis l'époque. |
-| [`clock`](https://man7.org/linux/man-pages/man3/clock.3.html) | Retourne le temps CPU écoulé. |
+| Fonction  | Description | Options | Exemples |
+|-----------|------------|---------|----------|
+| `time()` | Retourne l'heure actuelle en secondes depuis l'époque | `(time_t *tloc)` | `time_t now = time(NULL);` |
+| `clock()` | Retourne le temps CPU écoulé | Aucun | `clock_t t = clock();` |
 
 ---
 
 ## 📌 Conclusion
-Ce document regroupe les fonctions C les plus utilisées. Pour plus d’informations, consultez la documentation officielle ou utilisez `man <fonction>` sur un terminal Linux/macOS.
+Ce document regroupe les fonctions C les plus utilisées avec leur description, leurs options et des exemples concrets. Pour plus de détails, utilisez `man <fonction>` dans un terminal Linux/macOS.
 
