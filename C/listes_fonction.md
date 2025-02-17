@@ -8,8 +8,8 @@ Ce document répertorie les principales fonctions en langage C, organisées par 
 ## 🔹 1. Fonctions d'Entrée/Sortie (I/O)
 | Fonction  | Description | Options | Exemples |
 |-----------|------------|---------|----------|
-| `printf()` | Affiche du texte formaté sur la sortie standard | `%d` = entier, `%f` = flottant, `%s` = chaîne, `%c` = caractère | `printf("Valeur: %d", 10);` |
-| `scanf()` | Lit des entrées formatées | `%d` = entier, `%f` = flottant, `%s` = chaîne | `scanf("%d", &valeur);` |
+| `printf()` | Affiche du texte formaté sur la sortie standard | `%d` = entier, `%f` = flottant, `%s` = chaîne, `%c` = caractère `%lu` = unsigned long, `%ld` = long, `%llu` = unsigned long long| `printf("Valeur: %d", 10);` |
+| `scanf()` | Lit des entrées formatées | `%d` = entier, `%f` = flottant, `%s` = chaîne `%lu` = unsigned long, `%ld` = long, `%llu` = unsigned long long | `scanf("%d", &valeur);` |
 | `puts()` | Affiche une chaîne avec retour à la ligne | Aucune | `puts("Hello World");` |
 | `fgets()` | Lit une ligne avec une taille maximale | `(char *str, int size, FILE *stream)` | `fgets(buffer, 50, stdin);` |
 | `putchar()` | Affiche un caractère unique | `(char c)` | `putchar('A');` |
