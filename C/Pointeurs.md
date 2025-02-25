@@ -296,14 +296,54 @@ Voici les exercices recommandés :
 
 Les pointeurs sont essentiels pour gérer la mémoire et manipuler efficacement les données en C. En pratiquant, vous développerez une compréhension plus profonde des structures et algorithmes. N'hésitez pas à expérimenter avec les exemples et à approfondir les concepts abordés ici.
 
-## Notes perso
-### exemple:
-char *str = "Hello";
-str = adresse du premier caractère (0x1000).
-*str = valeur à l'adresse pointée par str, donc 'H'.
+## Notes Perso
 
-j'appel dans main _strlen(str)
-ici: int _strlen(char *s) -> s reçoit une copie de l'adresse contenue dans str.
-Donc: s = str = 0x1000 (pointe sur 'H').
-Ainsi: s = 0x1000 (même que str)
-       *s = 'H' (même que *str)
+### **Exemple :**
+```c
+char *str = "Hello";
+```
+
+| Terme   | Signification                                    | Valeur initiale     |
+|--------|--------------------------------------------------|---------------------|
+| `str`  | Adresse du premier caractère de la chaîne         | `0x1000` (adresse)  |
+| `*str` | Valeur à l'adresse pointée par `str` (déréférencement) | `'H'`               |
+
+---
+
+### **Appel de la fonction `_strlen` :**
+Dans le `main` :
+```c
+len = _strlen(str);
+```
+
+Dans `_strlen` :
+```c
+int _strlen(char *s)
+```
+
+Explication étape par étape :
+1. **`s` reçoit une copie de l'adresse contenue dans `str` :**
+   ```c
+   s = str;
+   ```
+   - Ici, `s = 0x1000` (même adresse que `str`).
+
+2. **Valeurs au début :**
+   | Terme   | Adresse pointée | Valeur pointée |
+   |--------|------------------|----------------|
+   | `str`  | `0x1000`         | `'H'`          |
+   | `s`    | `0x1000`         | `'H'`          |
+
+3. **Après un `s++` :**
+   - `s` avance à l'adresse suivante : `0x1001`
+   - `*s` devient `'e'`.
+
+4. **Évolution pendant la boucle :**
+   | Étape | Adresse de `s` | `*s` (Valeur) |
+   |-------|----------------|---------------|
+   | 1     | `0x1000`       | `'H'`         |
+   | 2     | `0x1001`       | `'e'`         |
+   | 3     | `0x1002`       | `'l'`         |
+   | 4     | `0x1003`       | `'l'`         |
+   | 5     | `0x1004`       | `'o'`         |
+   | 6     | `0x1005`       | `'
