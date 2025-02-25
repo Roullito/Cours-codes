@@ -295,3 +295,14 @@ Voici les exercices recommandés :
 
 Les pointeurs sont essentiels pour gérer la mémoire et manipuler efficacement les données en C. En pratiquant, vous développerez une compréhension plus profonde des structures et algorithmes. N'hésitez pas à expérimenter avec les exemples et à approfondir les concepts abordés ici.
 
+## Notes perso
+# exemple:
+char *str = "Hello";
+str = adresse du premier caractère (0x1000).
+*str = valeur à l'adresse pointée par str, donc 'H'.
+
+j'appel dans main _strlen(str)
+ici: int _strlen(char *s) -> s reçoit une copie de l'adresse contenue dans str.
+Donc: s = str = 0x1000 (pointe sur 'H').
+Ainsi: s = 0x1000 (même que str)
+       *s = 'H' (même que *str)
