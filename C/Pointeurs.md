@@ -14,6 +14,7 @@
 11. [Concepts Clés](#concepts-clés)
 12. [Exercices pratiques](#exercices-pratiques)
 13. [Conclusion](#conclusion)
+14. [Note perso](#note-perso)
 
 ---
 
