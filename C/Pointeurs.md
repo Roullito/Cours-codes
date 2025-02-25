@@ -34,10 +34,10 @@ int main() {
     int x = 10;  // Variable entière
     int *p = &x; // Pointeur vers x
 
-    printf("Valeur de x : %d\n", x);
-    printf("Adresse de x : %p\n", &x);
-    printf("Valeur du pointeur p : %p\n", p);
-    printf("Valeur pointée par p : %d\n", *p);
+    printf("Valeur de x : %d\n", x);      // Affiche la valeur de x
+    printf("Adresse de x : %p\n", &x);    // Affiche l'adresse de x en mémoire
+    printf("Valeur du pointeur p : %p\n", p);  // Affiche l'adresse pointée par p (celle de x)
+    printf("Valeur pointée par p : %d\n", *p); // Déréférence p pour afficher la valeur de x
 
     return 0;
 }
@@ -49,6 +49,10 @@ Adresse de x : 0x7ffee1c1a6ac
 Valeur du pointeur p : 0x7ffee1c1a6ac
 Valeur pointée par p : 10
 ```
+Explication :
+1. `int x = 10;` crée une variable entière `x` avec la valeur 10.
+2. `int *p = &x;` déclare un pointeur `p` et l'initialise avec l'adresse de `x`.
+3. `*p` permet d'accéder à la valeur stockée à l'adresse pointée (ici, la valeur de `x`).
 
 ---
 
@@ -59,6 +63,7 @@ La déclaration d'un pointeur se fait en utilisant l'opérateur `*` :
 ```c
 int *p;  // Pointeur vers un int
 ```
+Cela signifie que `p` peut stocker l'adresse d'une variable entière.
 
 ### 2. Initialisation
 Un pointeur doit être initialisé avec l'adresse d'une variable existante :
@@ -66,12 +71,14 @@ Un pointeur doit être initialisé avec l'adresse d'une variable existante :
 int x = 5;
 int *p = &x;  // p pointe vers x
 ```
+`&x` retourne l'adresse de la variable `x`.
 
 ### 3. Null pointer
 Un pointeur peut être initialisé à `NULL` s'il ne pointe vers rien :
 ```c
 int *p = NULL;
 ```
+Cela évite les accès accidentels à des zones mémoire non valides.
 
 ---
 
@@ -83,18 +90,24 @@ int x = 10;
 int *p = &x;
 printf("Valeur pointée par p : %d\n", *p);  // Affiche 10
 ```
+Explication : `*p` accède à la valeur stockée à l'adresse contenue dans `p`.
 
 2. **Adresse (`&`)** : Obtenir l'adresse d'une variable.
 ```c
-printf("Adresse de x : %p\n", &x);
+int y = 20;
+printf("Adresse de y : %p\n", &y);
 ```
+`&y` renvoie l'adresse mémoire de la variable `y`.
 
 3. **Incrémentation et décrémentation** :
 ```c
-p++;  // Avance de la taille d'un int
-p--;  // Recule de la taille d'un int
+int tab[] = {10, 20, 30};
+int *p = tab;
+p++;  // Avance de la taille d'un int (4 octets)
+printf("Deuxième élément : %d\n", *p);  // Affiche 20
+p--;
+printf("Premier élément : %d\n", *p);  // Affiche 10
 ```
-
 ---
 
 ## Pointeurs et tableaux
@@ -104,12 +117,15 @@ Les tableaux sont étroitement liés aux pointeurs. Le nom d'un tableau est un p
 ### Exemple :
 ```c
 int arr[] = {10, 20, 30};
-int *p = arr;
+int *p = arr;  // arr est équivalent à &arr[0]
 
 for (int i = 0; i < 3; i++) {
     printf("arr[%d] = %d\n", i, *(p + i));
 }
 ```
+Explication :
+- `p + i` avance de `i` éléments (chaque élément étant de type `int`).
+- `*(p + i)` donne la valeur à l'index `i`.
 
 ---
 
@@ -122,10 +138,11 @@ char str[] = "Bonjour";
 char *p = str;
 
 while (*p != '\0') {
-    printf("%c", *p);
-    p++;
+    printf("%c", *p);  // Affiche chaque caractère
+    p++;               // Avance vers le caractère suivant
 }
 ```
+Explication : `*p` lit le caractère pointé, `p++` passe au caractère suivant.
 
 ---
 
@@ -142,12 +159,13 @@ void afficherMessage() {
 }
 
 int main() {
-    void (*fptr)() = afficherMessage;
-    fptr();  // Appelle afficherMessage
+    void (*fptr)() = afficherMessage;  // Déclare un pointeur vers la fonction
+    fptr();  // Appelle afficherMessage via le pointeur
 
     return 0;
 }
 ```
+Explication : `void (*fptr)()` définit un pointeur vers une fonction sans paramètre retournant `void`.
 
 ---
 
@@ -171,6 +189,7 @@ int main() {
     return 0;
 }
 ```
+Explication : `ptr->x` est équivalent à `(*ptr).x` et simplifie l'accès aux membres.
 
 ---
 
@@ -190,13 +209,14 @@ int main() {
         return 1;
     }
 
-    *p = 42;
+    *p = 42;  // Stocke 42 à l'adresse allouée
     printf("Valeur : %d\n", *p);
 
-    free(p);  // Libérer la mémoire
+    free(p);  // Libérer la mémoire allouée dynamiquement
     return 0;
 }
 ```
+Explication : `malloc` alloue la mémoire, `free` la libère pour éviter les fuites.
 
 ---
 
@@ -206,11 +226,13 @@ int main() {
 ```c
 int *p = NULL;
 ```
+Cela évite les accès à des adresses aléatoires.
 
 2. **Libérer la mémoire après utilisation :**
 ```c
 free(p);
 ```
+Libère la mémoire allouée dynamiquement pour éviter les fuites.
 
 3. **Éviter les accès à des pointeurs invalides (dangling pointers).**
 
@@ -220,7 +242,6 @@ if (p == NULL) {
     printf("Allocation échouée\n");
 }
 ```
-
 ---
 
 ## Exercices pratiques
