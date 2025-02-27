@@ -113,25 +113,140 @@ printf("Deuxième élément : %d\n", *p);  // Affiche 20
 
 ---
 
-## Pointeurs et tableaux
+## Les Tableaux et les Pointeurs en C
 
-Les tableaux sont étroitement liés aux pointeurs. Le nom d'un tableau est un pointeur constant vers son premier élément.
+## Introduction
+En langage C, les **tableaux** et les **pointeurs** sont étroitement liés. Un tableau est une structure qui stocke des éléments de même type en mémoire de façon contiguë. Un pointeur, quant à lui, est une variable qui stocke l'adresse mémoire d'une autre variable.
 
-### Exemple :
+Lorsque l'on travaille avec des tableaux et des pointeurs, il est crucial de comprendre leur relation afin d'optimiser l'utilisation de la mémoire et d'écrire un code efficace.
+
+---
+
+## 1. Déclaration et Accès aux Tableaux
+
+Un tableau est déclaré comme suit :
 ```c
-int arr[] = {10, 20, 30};
-int *p = arr;  // arr est équivalent à &arr[0]
+int tab[5] = {10, 20, 30, 40, 50};
+```
+### Accès aux éléments
+Chaque élément du tableau est accessible via son **indice** :
+```c
+printf("%d\n", tab[0]); // Affiche 10
+printf("%d\n", tab[2]); // Affiche 30
+```
 
-for (int i = 0; i < 3; i++) {
-    printf("arr[%d] = %d\n", i, *(p + i));
+### Relation entre Tableaux et Pointeurs
+Le nom du tableau **tab** représente l'adresse du premier élément du tableau.
+```c
+printf("%p\n", tab); // Affiche l'adresse du premier élément
+printf("%p\n", &tab[0]); // Même adresse
+```
+En réalité, `tab` est un **pointeur constant** sur le premier élément du tableau.
+
+---
+
+## 2. Utilisation des Pointeurs pour Accéder aux Éléments
+
+Un tableau peut être parcouru à l'aide d'un pointeur :
+```c
+int *p = tab; // p pointe vers le premier élément du tableau
+printf("%d\n", *p);   // Affiche 10
+p++;  // Avance d'une case
+printf("%d\n", *p);   // Affiche 20
+```
+
+On peut aussi accéder aux éléments d'un tableau en utilisant l'arithmétique des pointeurs :
+```c
+printf("%d\n", *(tab + 1)); // Équivaut à tab[1]
+```
+
+---
+
+## 3. Modification des Valeurs via un Pointeur
+
+Un pointeur permet également de modifier les valeurs d'un tableau :
+```c
+int tab[3] = {5, 10, 15};
+int *p = tab; // p pointe sur tab[0]
+
+*p = 20;  // Modifie tab[0]
+p++;      // Déplace le pointeur sur tab[1]
+*p = 25;  // Modifie tab[1]
+
+// Résultat : tab = {20, 25, 15}
+```
+
+---
+
+## 4. Passer un Tableau à une Fonction
+
+Lorsqu'on passe un tableau à une fonction, on passe **l'adresse du premier élément**, donc un pointeur :
+```c
+void afficher_tableau(int *t, int taille) {
+    for (int i = 0; i < taille; i++) {
+        printf("%d ", *(t + i));
+    }
+    printf("\n");
+}
+
+int main() {
+    int tab[5] = {1, 2, 3, 4, 5};
+    afficher_tableau(tab, 5);
+    return 0;
 }
 ```
 
-Explication :
-- `p + i` avance de `i` éléments (chaque élément étant de type `int`).
-- `*(p + i)` donne la valeur à l'index `i`.
+---
+
+## 5. Différence entre `tab[]` et `*tab`
+Dans une fonction, les deux écritures suivantes sont équivalentes :
+```c
+void fonction1(int tab[]);
+void fonction2(int *tab);
+```
+Dans les deux cas, `tab` est en réalité un **pointeur sur le premier élément du tableau**, et non une copie complète du tableau.
 
 ---
+
+## 6. Allocation Dynamique de Tableaux
+Avec `malloc`, on peut allouer un tableau dynamiquement :
+```c
+int *tab = malloc(5 * sizeof(int));
+if (tab == NULL) {
+    printf("Allocation échouée\n");
+    return 1;
+}
+
+for (int i = 0; i < 5; i++) {
+    tab[i] = i * 10;
+}
+
+free(tab); // Libération de la mémoire
+```
+
+---
+
+## 7. Tableau de Pointeurs
+On peut aussi créer un tableau qui stocke des **pointeurs** :
+```c
+int a = 10, b = 20, c = 30;
+int *tab[3] = {&a, &b, &c};
+
+printf("%d\n", *tab[0]); // Affiche 10
+printf("%d\n", *tab[1]); // Affiche 20
+```
+
+---
+
+## Conclusion
+- Un **tableau** est une suite de données stockées de manière contiguë en mémoire.
+- Un **pointeur** permet d'accéder aux éléments d'un tableau via des adresses mémoire.
+- L'arithmétique des pointeurs permet de naviguer efficacement dans un tableau.
+- Lorsqu'un tableau est passé à une fonction, seul l'adresse du premier élément est transmise.
+- L'utilisation de l'allocation dynamique (`malloc`) permet de créer des tableaux de taille variable.
+
+Ces notions sont essentielles pour optimiser la gestion de la mémoire en C. 🚀
+
 
 ## Pointeurs et chaînes de caractères
 
