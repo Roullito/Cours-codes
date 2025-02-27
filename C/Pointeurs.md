@@ -113,7 +113,7 @@ printf("Deuxième élément : %d\n", *p);  // Affiche 20
 
 ---
 
-## Les Tableaux et les Pointeurs en C
+## Pointeurs et tableaux
 
 ## Introduction
 En langage C, les **tableaux** et les **pointeurs** sont étroitement liés. Un tableau est une structure qui stocke des éléments de même type en mémoire de façon contiguë. Un pointeur, quant à lui, est une variable qui stocke l'adresse mémoire d'une autre variable.
