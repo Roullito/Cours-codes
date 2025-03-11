@@ -1,19 +1,19 @@
-# 📘 C - `malloc` and `free`
+# 📘 C - `malloc`, `free`, `calloc`, and `realloc`
 
 ## 📚 Resources
 Read or watch:
-- [0x0a - malloc & free - quick overview.pdf](#)
-- [Dynamic memory allocation in C - malloc, calloc, realloc, free (stop at 6:50)](#)
-- **man pages**: `man malloc`, `man free`
+- [Do I cast the result of malloc?](#)
+- **man pages**: `man malloc`, `man free`, `man exit`, `man calloc`, `man realloc`
 
 ---
 
 ## 🎯 Learning Objectives
 At the end of this lesson, you should be able to explain:
 - The difference between **automatic** and **dynamic** memory allocation.
-- What `malloc` and `free` are and how to use them.
-- When and why to use `malloc`.
+- What `malloc`, `free`, `calloc`, and `realloc` are and how to use them.
+- Why and when to use `malloc`, `calloc`, and `realloc`.
 - How to use **Valgrind** to check for memory leaks.
+- How to use the `exit` function properly.
 
 ---
 
@@ -24,7 +24,7 @@ In C, memory can be allocated in two ways:
 | Type              | Description |
 |------------------|-------------|
 | **Automatic Allocation** | Memory is allocated **automatically** when variables are declared inside a function. Memory is released when the function returns. |
-| **Dynamic Allocation** | Memory is allocated **manually** at runtime using functions like `malloc`. It must be released using `free`. |
+| **Dynamic Allocation** | Memory is allocated **manually** at runtime using functions like `malloc`, `calloc`, or `realloc`. It must be released using `free`. |
 
 ### **Example of Automatic Allocation**
 ```c
@@ -51,7 +51,7 @@ void example(void) {
 
 ---
 
-## 🏗 Understanding `malloc` and `free`
+## 🏗 Understanding `malloc`, `free`, `calloc`, and `realloc`
 ### **`malloc` - Memory Allocation**
 **Prototype:**
 ```c
@@ -79,17 +79,42 @@ int main(void) {
 }
 ```
 
-### **Allocating Arrays with `malloc`**
-To allocate an array dynamically:
+### **`calloc` - Contiguous Memory Allocation**
+**Prototype:**
 ```c
-int *array = malloc(sizeof(int) * 5);
+void *calloc(size_t nmemb, size_t size);
 ```
-- Allocates memory for 5 integers.
-- Access elements using `array[index]`.
+- Allocates memory for `nmemb` elements of `size` bytes each.
+- **Initializes the allocated memory to zero.**
+- Returns `NULL` if allocation fails.
+
+#### **Example: Allocating an Array with `calloc`**
+```c
+int *array = calloc(5, sizeof(int));
+```
+- This allocates memory for **5 integers** and initializes all elements to `0`.
 - Always **free the allocated memory** after use:
 ```c
 free(array);
 ```
+
+### **`realloc` - Resizing Memory Allocation**
+**Prototype:**
+```c
+void *realloc(void *ptr, size_t size);
+```
+- Changes the size of memory allocated by `malloc` or `calloc`.
+- The **newly allocated memory is not initialized**.
+- If `ptr` is `NULL`, it behaves like `malloc`.
+- If `size` is `0`, it behaves like `free`.
+
+#### **Example: Expanding an Array**
+```c
+int *array = malloc(3 * sizeof(int));
+array = realloc(array, 5 * sizeof(int));
+```
+- If reallocation is successful, the original memory block may be moved.
+- Always **check if `realloc` returns `NULL`** before using the resized array.
 
 ---
 
@@ -98,7 +123,7 @@ free(array);
 ```c
 void free(void *ptr);
 ```
-- Releases memory previously allocated by `malloc`.
+- Releases memory previously allocated by `malloc`, `calloc`, or `realloc`.
 - If memory is not freed, it **causes memory leaks**.
 - **Freeing a `NULL` pointer is safe** (it does nothing).
 
@@ -108,21 +133,9 @@ int *num = malloc(sizeof(int));
 free(num); // Correct usage
 ```
 
-#### **Incorrect Usage (Dangling Pointer)**
-```c
-int *num = malloc(sizeof(int));
-free(num);
-*num = 10;  // ❌ Undefined behavior! Memory has been freed.
-```
-- **After freeing memory, always set the pointer to `NULL`**:
-```c
-free(num);
-num = NULL;
-```
-
 ---
 
-## 🚨 Common Issues with `malloc` and `free`
+## 🚨 Common Issues with Dynamic Allocation
 ### **1️⃣ Forgetting to Free Memory (Memory Leak)**
 ```c
 void function() {
@@ -189,18 +202,14 @@ Example output when all memory is freed correctly:
 - **Follow Betty coding style (`betty-style.pl`, `betty-doc.pl`).**
 - **No global variables.**
 - **No more than 5 functions per file.**
-- **Only allowed standard functions: `malloc`, `free`** (no `printf`, `puts`, `calloc`, `realloc`).
+- **Only allowed standard functions: `malloc`, `free`, `calloc`, `realloc`**.
 
 ---
 
 ## 🚀 Conclusion
-- `malloc` **allocates memory dynamically**, allowing flexible memory management.
-- `free` **deallocates memory**, preventing memory leaks.
-- **Always free allocated memory and use Valgrind to check for leaks.**
-
-🎯 **Next Steps:**
-- Practice with `malloc` to allocate arrays and structures dynamically.
-- Use `Valgrind` to verify memory usage.
+- `malloc`, `calloc`, and `realloc` provide **flexible memory management**.
+- Always **check for `NULL`** and **free memory properly**.
+- Use **Valgrind** to ensure no memory leaks.
 
 🚀 **Happy coding!**
 
