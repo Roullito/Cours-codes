@@ -22,17 +22,24 @@ Un algorithme de tri est une méthode permettant de **réorganiser les élément
 ### 1. **Bubble Sort (tri à bulles)**
 **Principe :** On compare deux à deux les éléments et on les échange si besoin.
 
-**Complexité :** O(n²)
+**Complexité :**  
+- Meilleur cas : O(n)  
+- Moyen cas : O(n²)  
+- Pire cas : O(n²)
 
 ### 2. **Insertion Sort (tri par insertion)**
 **Principe :** On insère chaque élément à sa bonne position dans la partie déjà triée.
 
-**Complexité :** O(n²) dans le pire cas, O(n) dans le meilleur cas (tableau presque trié)
+**Complexité :**  
+- Meilleur cas : O(n)  
+- Moyen cas : O(n²)  
+- Pire cas : O(n²)
 
 ### 3. **Selection Sort (tri par sélection)**
 **Principe :** On cherche le plus petit élément et on le place au début.
 
-**Complexité :** O(n²)
+**Complexité :**  
+- Tous les cas : O(n²)
 
 ### 4. **Quick Sort**
 **Principe :**
@@ -40,73 +47,110 @@ Un algorithme de tri est une méthode permettant de **réorganiser les élément
 - Diviser le tableau en deux sous-tableaux
 - Appliquer le tri récursivement
 
-**Complexité moyenne :** O(n log n), mais O(n²) dans le pire cas si mal choisi
+**Complexité :**  
+- Meilleur / moyen cas : O(n log n)  
+- Pire cas (pivot mal choisi) : O(n²)
 
 ### 5. **Merge Sort (tri fusion)**
 **Principe :** Diviser pour régner. On divise en sous-tableaux jusqu'à n = 1, puis on fusionne en triant.
 
-**Complexité :** O(n log n)
+**Complexité :**  
+- Tous les cas : O(n log n)
 
 ---
 
 ## 🤨 Stabilité des algorithmes de tri
 Un algorithme de tri est **stable** s'il **conserve l'ordre relatif** des éléments égaux.
 
-| Tri            | Stable ? |
-|----------------|----------|
-| Bubble Sort    | Oui      |
-| Insertion Sort | Oui      |
-| Selection Sort | Non      |
-| Merge Sort     | Oui      |
-| Quick Sort     | Non      |
+| Algorithme       | Stable ? | In-place ? |
+|------------------|----------|------------|
+| Bubble Sort      | ✅       | ✅         |
+| Insertion Sort   | ✅       | ✅         |
+| Selection Sort   | ❌       | ✅         |
+| Merge Sort       | ✅       | ❌         |
+| Quick Sort       | ❌       | ✅         |
+| Counting Sort    | ✅       | ❌         |
+| Radix Sort       | ✅       | ❌         |
+| Heap Sort        | ❌       | ✅         |
 
 ---
 
 ## 🌍 Notation Big O
 
-La **notation Big O** décrit la complexité temporelle ou spatiale d'un algorithme en fonction de la taille des données.
+La **notation Big O** décrit la complexité **temporelle** ou **spatiale** d’un algorithme selon la taille des données d’entrée.
 
-### ⏳ Exemples de complexité
-| Notation | Interprétation             |
-|----------|-----------------------------|
-| O(1)     | Temps constant              |
-| O(n)     | Temps linéaire             |
-| O(n log n) | Temps quasi-linéaire    |
-| O(n²)    | Temps quadratique          |
-| O(2^n)   | Temps exponentiel           |
+### ⏳ Table de complexité temporelle
 
-### ✅ Pour le tri :
-- **Bubble / Insertion / Selection** : O(n²)
-- **Merge / Quick Sort** : O(n log n)
+| Notation        | Nom                          | Interprétation                            | Exemple(s) typique(s)                     |
+|-----------------|------------------------------|--------------------------------------------|-------------------------------------------|
+| O(1)            | Temps constant                | Même durée, peu importe la taille des données | Accès direct à un tableau                |
+| O(log n)        | Logarithmique                 | Très efficace, doublement de données → +1 op | Recherche binaire, arbre équilibré       |
+| O(n)            | Linéaire                      | Proportionnel à la taille d’entrée         | Boucle simple, recherche dans une liste   |
+| O(n log n)      | Quasi-linéaire                | Très efficace pour le tri                  | Merge Sort, Quick Sort                    |
+| O(n²)           | Quadratique                   | Boucles imbriquées                         | Bubble / Insertion / Selection Sort       |
+| O(n³)           | Cubique                       | 3 boucles imbriquées                       | Calculs de matrice naïfs                  |
+| O(2ⁿ)           | Exponentielle                 | Explosion rapide du temps de calcul       | Problèmes de décision récursifs           |
+| O(n!)           | Factorielle                   | Très lent, souvent inutilisable            | Génération de permutations                |
+
+---
+
+## 🧠 Complexité spatiale (mémoire utilisée)
+
+| Notation  | Nom                    | Exemple d'utilisation                     |
+|-----------|------------------------|-------------------------------------------|
+| O(1)      | Constante              | Algo "in-place", sans mémoire supplémentaire |
+| O(n)      | Linéaire               | Stockage de tableau intermédiaire         |
+| O(log n)  | Logarithmique          | Pile d’appels récursifs                   |
+| O(n log n)| Quasi-linéaire         | Merge Sort (pile + fusion)                |
+
+---
+
+## ⚖️ Comparatif des algorithmes de tri
+
+| Algorithme       | Meilleur cas | Moyen cas   | Pire cas    | Stable | In-place |
+|------------------|--------------|-------------|-------------|--------|----------|
+| Bubble Sort      | O(n)         | O(n²)       | O(n²)       | ✅     | ✅       |
+| Insertion Sort   | O(n)         | O(n²)       | O(n²)       | ✅     | ✅       |
+| Selection Sort   | O(n²)        | O(n²)       | O(n²)       | ❌     | ✅       |
+| Merge Sort       | O(n log n)   | O(n log n)  | O(n log n)  | ✅     | ❌       |
+| Quick Sort       | O(n log n)   | O(n log n)  | O(n²)       | ❌     | ✅       |
+| Heap Sort        | O(n log n)   | O(n log n)  | O(n log n)  | ❌     | ✅       |
+| Counting Sort    | O(n + k)     | O(n + k)    | O(n + k)    | ✅     | ❌       |
+| Radix Sort       | O(nk)        | O(nk)       | O(nk)       | ✅     | ❌       |
 
 ---
 
 ## 🤯 Comment choisir le bon tri ?
-| Situation                            | Algorithme recommandé  |
-|--------------------------------------|--------------------------|
-| Données petites / quasi triées       | Insertion Sort           |
-| Performance optimale attendue        | Merge ou Quick Sort      |
-| Stabilité requise                    | Merge Sort               |
-| Mémoire limitée                      | Quick Sort (in-place)    |
+
+| Situation spécifique                  | Algorithme recommandé     |
+|--------------------------------------|----------------------------|
+| Liste petite ou déjà triée           | Insertion Sort             |
+| Performance optimale attendue        | Quick Sort (en général)    |
+| Stabilité nécessaire                 | Merge Sort, Counting Sort  |
+| Très grands ensembles de données     | Quick Sort ou Heap Sort    |
+| Trie d'entiers sur plage limitée     | Counting Sort              |
+| Trie de chaînes de caractères (par caractère) | Radix Sort         |
 
 ---
 
 ## 🳱 Astuces de test
 - Utilise `print_array()` pour afficher un tableau
 - Utilise `print_list()` pour afficher une liste doublement chaînée
-- Teste avec des gros tableaux de nombres aléatoires (random.org)
+- Teste avec de gros tableaux de nombres aléatoires (ex: [random.org](https://www.random.org/))
 
 ---
 
 ## 📚 Récapitulatif
-- ✔ 4 tri à connaître : Bubble, Insertion, Merge, Quick
-- ✔ Big O permet d'estimer les performances
-- ✔ Merge Sort est stable et efficace
-- ✔ Quick Sort est souvent très rapide, mais pas stable
+- ✔ Connaître : Bubble, Insertion, Merge, Quick
+- ✔ Notation Big O = mesurer la performance
+- ✔ Merge Sort = efficace ET stable
+- ✔ Quick Sort = ultra rapide en pratique (moyenne)
+- ✔ Savoir adapter l'algorithme à ton besoin
 
 ---
 
 ## 📁 Structure à utiliser
+
 ```c
 typedef struct listint_s
 {
