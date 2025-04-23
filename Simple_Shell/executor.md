@@ -1,94 +1,93 @@
-# Fichier : `execute.c`
+# Explication complète de `executor.c`
 
-## Fonction : `void execute(char **argv, char **env)`
-
----
-
-### Prototype :
-```c
-void execute(char **argv, char **env);
-```
-
-### Objectif :
-Cette fonction crée un processus fils avec `fork()` pour exécuter une commande extérieure (non builtin) en utilisant `execve()`. Le parent attend que l'enfant termine avec `wait()`.
+Ce fichier gère la création d'un processus enfant pour exécuter une commande externe via `execve`. C'est un élément central du fonctionnement d'un shell, qui permet de lancer les commandes saisies par l'utilisateur.
 
 ---
 
-### Détail ligne par ligne :
+## 🔧 Fonction `execute`
 
 ```c
-pid_t pid;
-int status;
+int execute(char **argv, char **env)
 ```
-- `pid` : stocke le résultat du `fork()`. Permet de savoir si on est dans le processus parent ou enfant.
-- `status` : sera utilisé par `wait()` pour récupérer le statut de retour de l'enfant.
+
+- `argv` : tableau de chaînes contenant la commande et ses arguments.
+- `env` : tableau contenant les variables d'environnement.
+- Retourne : le code de sortie de la commande ou `127` si `execve` échoue.
 
 ---
+
+### Détail ligne par ligne
+
+```c
+if (argv == NULL || argv[0] == NULL || env == NULL)
+	return (1);
+```
+- Vérifie que les arguments et l'environnement sont valides.
 
 ```c
 pid = fork();
 ```
-- Crée un **nouveau processus**.
-  - Si `pid < 0` ⇒ Erreur dans `fork()`.
-  - Si `pid == 0` ⇒ On est dans le processus **enfant**.
-  - Si `pid > 0` ⇒ On est dans le **parent**.
-
----
+- Crée un nouveau processus. Si ça échoue, on retourne une erreur.
 
 ```c
 if (pid == -1)
-{
-    perror("fork");
-    return;
-}
 ```
-- Si `fork()` échoue, on affiche l'erreur avec `perror()` et on quitte la fonction.
-
----
+- Échec de `fork`, on affiche une erreur et retourne `1`.
 
 ```c
 if (pid == 0)
-{
-    if (execve(argv[0], argv, env) == -1)
-    {
-        perror("execve");
-        exit(EXIT_FAILURE);
-    }
-}
 ```
-- **Dans le processus enfant** :
-  - On tente d'exécuter la commande avec `execve()`.
-    - `argv[0]` : chemin de la commande à exécuter (absolu ou déduit via `_which()`).
-    - `argv` : tableau des arguments.
-    - `env` : tableau des variables d'environnement.
-  - Si `execve()` échoue, on affiche l'erreur, puis on **quitte l'enfant** avec `exit()` (important pour ne pas exécuter la suite du code parent).
+- Code exécuté dans le **processus enfant**.
 
----
+```c
+if (execve(argv[0], argv, env) == -1)
+```
+- Tente d'exécuter la commande. Si ça échoue, on affiche une erreur et quitte le processus avec `127`.
 
 ```c
 else
-{
-    wait(&status);
-}
 ```
-- **Dans le processus parent** :
-  - `wait()` permet d'attendre la fin de l'exécution de l'enfant.
-  - Le statut est stocké dans `status` (inutile ici, mais bon pour des futurs améliorations).
+- Partie **parent** du processus : attend que le fils termine avec `waitpid`.
+
+```c
+if (waitpid(pid, &status, 0) == -1)
+```
+- Vérifie que l'attente s'est bien passée. Sinon, affiche une erreur.
+
+```c
+if(WIFEXITED(status))
+	return (WEXITSTATUS(status));
+```
+- Si l'enfant s'est terminé normalement, on retourne son code de sortie (avec `WEXITSTATUS`).
+
+```c
+return (1);
+```
+- Si l'enfant ne s'est pas terminé normalement, on retourne une erreur générique `1`.
 
 ---
 
-## Récapitulatif du fonctionnement :
+## 🧰 Schéma mémoire (simplifié)
 
-1. Le shell lit une commande.
-2. Si ce n'est pas un builtin, on passe à `execute(argv, env)`.
-3. `fork()` crée un processus fils.
-4. Le fils appelle `execve()` pour lancer la commande.
-5. Le parent attend que l'enfant se termine.
+```text
+Processus parent
+|
+|-- fork()
+|
+|---> Processus enfant
+      |
+      |-- execve("/bin/ls", {"ls", NULL}, env)
+      |     -> Remplace totalement le code de l'enfant par celui de la commande
+```
 
 ---
 
-## Pourquoi utiliser `fork()` et `execve()` ?
-- `fork()` crée une copie du processus courant pour isoler l'exécution.
-- `execve()` remplace l'image mémoire du fils par celle de la commande, sans affecter le shell principal.
-- Cela garantit que même si la commande échoue ou se termine, notre shell continue de tourner.
+## ✨ Intégration dans le shell
+- Cette fonction est appelée **après avoir vérifié que la commande n'est pas un builtin**.
+- Elle permet au shell de rester actif pendant que la commande s'exécute dans un processus séparé.
+
+---
+
+Si `execve` échoue, on retourne `127`, comme spécifié dans le projet.
+Sinon, on relaie simplement le code de retour du processus enfant vers le shell parent.
 
