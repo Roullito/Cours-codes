@@ -43,8 +43,4 @@ Ce dépôt est **personnel mais public**. Tu peux t’en inspirer, le forker, ou
 
 Ce contenu est fourni à des fins éducatives. L’ensemble des codes a été écrit pour **pratiquer et comprendre** les bases du langage C et de l’environnement UNIX/Linux.
 
----
-
-> *“The best way to learn to code is to read and write a lot of code.”*  
-> — Toi, après 5 projets Holberton 😄
 
