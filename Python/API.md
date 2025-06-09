@@ -1,4 +1,4 @@
-# 🌐 Cours Ultra Complet – Les API et les API RESTful en Python
+# 🌐 Les API et les API RESTful en Python
 
 ## 🔰 Introduction aux API
 
