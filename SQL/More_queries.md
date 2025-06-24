@@ -1,18 +1,28 @@
-# 📚 SQL - More Queries — Cours Ultra Complet
+# 📚 SQL - More Queries — Cours Ultra Complet, Pédagogique et Détaillé
 
 ---
 
-## 🔧 1. Création et gestion d'utilisateurs MySQL
+## 🛠️ 1. Création et gestion d'utilisateurs MySQL
+
+### ➤ Pourquoi créer des utilisateurs ?
+Pour sécuriser et organiser les accès à la base de données : chaque utilisateur peut avoir des droits différents.
 
 ### ➤ Créer un nouvel utilisateur :
 ```sql
 CREATE USER 'new_user'@'localhost' IDENTIFIED BY 'password';
 ```
+**localhost** signifie que l'utilisateur peut se connecter uniquement depuis la machine locale.
 
 ### ➤ Attribuer des privilèges à un utilisateur :
 ```sql
 GRANT ALL PRIVILEGES ON database_name.* TO 'new_user'@'localhost';
 FLUSH PRIVILEGES;
+```
+⚠️ Toujours exécuter `FLUSH PRIVILEGES` après modification des droits.
+
+### ➤ Exemples de privilèges spécifiques :
+```sql
+GRANT SELECT, INSERT ON database_name.* TO 'new_user'@'localhost';
 ```
 
 ### ➤ Retirer des privilèges :
@@ -27,23 +37,28 @@ DROP USER 'new_user'@'localhost';
 
 ---
 
-## 🔑 2. Contraintes SQL importantes
+## 🔑 2. Contraintes SQL (Garantir l'intégrité des données)
 
 ### ➤ PRIMARY KEY :
-- Identifie de manière unique chaque ligne.
-- Une seule par table.
+Identifie de manière unique chaque ligne d'une table. Obligatoire pour la clé d'identification principale.
+```sql
+id INT PRIMARY KEY
+```
 
 ### ➤ FOREIGN KEY :
-- Crée un lien entre deux tables.
-- La valeur doit exister dans la table référencée.
+Crée un lien entre deux tables.
+```sql
+FOREIGN KEY (role_id) REFERENCES roles(id)
+```
+**Attention :** La valeur insérée doit exister dans la table référencée.
 
 ### ➤ NOT NULL :
-- La colonne ne peut pas contenir de valeur NULL.
+La colonne doit obligatoirement contenir une valeur.
 
 ### ➤ UNIQUE :
-- Les valeurs de la colonne doivent être uniques.
+La valeur dans cette colonne doit être unique pour chaque ligne.
 
-Exemple :
+**Exemple complet :**
 ```sql
 CREATE TABLE users (
     id INT PRIMARY KEY,
@@ -55,126 +70,154 @@ CREATE TABLE users (
 
 ---
 
-## 🔄 3. Requêtes multi-tables et JOINS
+## 🔄 3. JOINS — Lier les tables pour enrichir les résultats
 
-### ➤ INNER JOIN : Retourne les correspondances dans les deux tables.
+Imagine 2 tables :
 ```sql
-SELECT * FROM A INNER JOIN B ON A.key = B.key;
+clients (id, nom)
+commandes (id, client_id, montant)
 ```
 
-### ➤ LEFT JOIN : Tous les enregistrements de A et ceux correspondants de B.
+### ➤ INNER JOIN (intersection des deux tables)
 ```sql
-SELECT * FROM A LEFT JOIN B ON A.key = B.key;
+SELECT clients.nom, commandes.montant
+FROM clients
+INNER JOIN commandes ON clients.id = commandes.client_id;
 ```
+**Affiche uniquement les clients ayant passé des commandes.**
 
-### ➤ RIGHT JOIN : Tous les enregistrements de B et ceux correspondants de A.
+### ➤ LEFT JOIN (tous les clients, commandes si existantes)
 ```sql
-SELECT * FROM A RIGHT JOIN B ON A.key = B.key;
+SELECT clients.nom, commandes.montant
+FROM clients
+LEFT JOIN commandes ON clients.id = commandes.client_id;
 ```
+**Affiche tous les clients, même ceux sans commande (valeurs NULL si pas de commande).**
 
-### ➤ FULL OUTER JOIN (Pas supporté nativement par MySQL) :
-Simulable avec UNION :
+### ➤ RIGHT JOIN (l'inverse du LEFT JOIN)
+Affiche toutes les commandes même si aucun client n'est associé (peu courant mais possible).
+
+### ➤ FULL OUTER JOIN (MySQL ne le supporte pas directement)
+Simulable avec `UNION` :
 ```sql
 SELECT * FROM A LEFT JOIN B ON A.key = B.key
 UNION
 SELECT * FROM A RIGHT JOIN B ON A.key = B.key;
 ```
 
-### ➤ JOIN multiples :
+---
+
+## 🧩 4. JOINs multiples
+
+### ➤ Exemple avec 3 tables :
 ```sql
-SELECT * FROM A
+SELECT A.nom, B.nom, C.nom
+FROM A
 JOIN B ON A.b_id = B.id
 JOIN C ON B.c_id = C.id;
 ```
-
-### ➤ DISTINCT pour éviter les doublons :
-```sql
-SELECT DISTINCT column FROM table;
-```
+Permet de naviguer dans plusieurs niveaux de relations.
 
 ---
 
-## 🔍 4. Sous-requêtes (Subqueries)
+## 🔍 5. Sous-requêtes (Subqueries)
+
+**Une sous-requête permet d'insérer une requête dans une autre.**
 
 ### ➤ Dans le WHERE :
 ```sql
-SELECT name FROM students WHERE id IN (SELECT student_id FROM scores WHERE score > 10);
+SELECT nom FROM clients
+WHERE id IN (SELECT client_id FROM commandes WHERE montant > 100);
 ```
-
-### ➤ Dans le FROM :
-```sql
-SELECT avg_score FROM (SELECT AVG(score) AS avg_score FROM scores) AS temp;
-```
+**Affiche les clients ayant passé une commande de plus de 100.**
 
 ### ➤ Avec EXISTS :
 ```sql
-SELECT name FROM students WHERE EXISTS (SELECT * FROM scores WHERE students.id = scores.student_id);
+SELECT nom FROM clients
+WHERE EXISTS (SELECT * FROM commandes WHERE clients.id = commandes.client_id);
 ```
+**Affiche les clients ayant au moins une commande.**
 
 ---
 
-## 🔀 5. UNION et MINUS
+## 🔀 6. UNION et différences
 
-### ➤ UNION : Combine les résultats sans doublons.
+### ➤ UNION : Combine les résultats de deux requêtes sans doublons.
 ```sql
-SELECT name FROM A
+SELECT nom FROM clients
 UNION
-SELECT name FROM B;
+SELECT nom FROM fournisseurs;
 ```
 
-### ➤ UNION ALL : Combine les résultats avec doublons.
-```sql
-SELECT name FROM A
-UNION ALL
-SELECT name FROM B;
-```
+### ➤ UNION ALL : Inclut les doublons.
 
-### ➤ MINUS : Pas supporté en MySQL — s'utilise avec des astuces comme `LEFT JOIN` et `IS NULL`.
+### ➤ MINUS : Pas supporté en MySQL. À simuler avec `LEFT JOIN ... IS NULL`.
 
 ---
 
-## 🗄️ 6. Bonnes pratiques SQL
-
-✅ Utiliser des commentaires en haut de chaque script :
-```sql
--- Explains the purpose of this SQL script
-```
-
-✅ Tous les mots-clés SQL en MAJUSCULES.
-
-✅ Respecter les bonnes conventions de nommage.
-
-✅ Terminer chaque commande SQL par un point-virgule `;`.
-
----
-
-## 🛠️ 7. Design de base de données (UML, Normalisation)
+## 🏗️ 7. Design de base de données (UML et Normalisation)
 
 ### ➤ UML :
-- Diagrammes de classes et d'associations.
-- Permet de modéliser les tables et leurs relations.
+Diagramme représentant :
+- Les tables (entités)
+- Les relations (liens entre clés)
 
 ### ➤ Normalisation :
-- **1NF** : Pas de valeurs multiples dans une colonne.
-- **2NF** : Pas de dépendances partielles.
-- **3NF** : Pas de dépendances transitives.
-- Objectif : éviter la redondance et assurer l'intégrité.
+**But : Éliminer les redondances et assurer la cohérence.**
+
+- **1NF** : Pas de champs multivalués ou de champs composites.
+- **2NF** : Dépendance complète de la clé primaire.
+- **3NF** : Pas de dépendance transitives (dépendances entre colonnes non clés).
+
+### ➤ Exemple simple de modélisation :
+**Table Clients :** id, nom  
+**Table Commandes :** id, client_id, montant  
+Relation : Commandes.client_id → Clients.id
 
 ---
 
-## 📌 8. Récapitulatif rapide
+## 🎨 8. Résumé visuel des types de JOIN (voir image associée au projet)
 
-✔ Créer et gérer des utilisateurs et privilèges.  
-✔ Comprendre PRIMARY KEY, FOREIGN KEY, NOT NULL, UNIQUE.  
-✔ Maîtriser les JOINS (LEFT, RIGHT, INNER, FULL).  
-✔ Utiliser les sous-requêtes et UNION.  
-✔ Respecter les bonnes pratiques SQL et le design relationnel.
+- INNER JOIN → Intersection (données communes)
+- LEFT JOIN → Tout A + correspondances B
+- RIGHT JOIN → Tout B + correspondances A
+- FULL JOIN (via UNION) → Tout A + Tout B
+- LEFT JOIN + IS NULL → Éléments de A sans correspondance dans B
+- RIGHT JOIN + IS NULL → Éléments de B sans correspondance dans A
 
 ---
 
-## 🧩 9. Ressources complémentaires
+## 📝 9. Bonnes pratiques SQL obligatoires
+
+✅ Commentaires en haut de chaque script  
+✅ Tous les mots-clés SQL en majuscules  
+✅ Respect des conventions (snake_case ou camelCase selon l'équipe)  
+✅ Fichiers terminés par un saut de ligne  
+✅ Attention aux performances :
+- Utiliser les indexes
+- Éviter les sous-requêtes inutiles
+- Privilégier les JOIN clairs
+
+---
+
+## 📌 10. Récapitulatif express
+
+✔ Créer des utilisateurs et gérer leurs droits  
+✔ Maîtriser PRIMARY KEY, FOREIGN KEY, UNIQUE, NOT NULL  
+✔ Faire des requêtes complexes avec JOINs et sous-requêtes  
+✔ Utiliser UNION pour combiner les résultats  
+✔ Appliquer la normalisation et modéliser avec UML  
+✔ Écrire des scripts SQL propres et maintenables  
+
+---
+
+## 🔗 11. Ressources complémentaires
 
 - [MySQL Cheat Sheet](https://devhints.io/mysql)
+- [SQL Joins visuel interactif](https://www.sql-joins.lewagon.com/)
 - [SQL Style Guide](https://www.sqlstyle.guide/)
-- [SQL Joins visuel](https://www.sql-joins.lewagon.com/)
-- [MySQL Documentation officielle](https://dev.mysql.com/doc/)
+- [Documentation officielle MySQL](https://dev.mysql.com/doc/)
+
+---
+
+**Ce cours couvre l'intégralité des concepts nécessaires pour réussir le projet SQL - More Queries et comprendre les bonnes pratiques du développement de bases relationnelles.**
