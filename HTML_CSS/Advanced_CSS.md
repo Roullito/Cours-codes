@@ -1,170 +1,227 @@
-markdown
-# 🎨 Cours ULTRA COMPLET – CSS (Cascading Style Sheets)
+# CSS Fundamentals and Advanced Concepts
 
-## 🔰 Introduction à CSS
+## Overview
+CSS (Cascading Style Sheets) are used to style HTML.
 
-CSS (Cascading Style Sheets) est un **langage de style** qui permet de **contrôler la présentation** d’un document HTML. Il définit comment les éléments HTML doivent être affichés à l'écran, sur papier ou sur d'autres supports.
+CSS works by:
+- Selecting an HTML element
+- Choosing a property to alter
+- Applying a certain value
 
-### Pourquoi CSS ?
-- Séparation du **contenu** (HTML) et de la **présentation** (CSS)
-- Réutilisabilité des styles
-- Meilleure maintenabilité
-- Responsive design (adapté aux mobiles/tablettes)
-
----
-
-## 📄 Syntaxe de base
-
+### Syntax
 ```css
-selector {
-  property: value;
+element-selector {
+  one-style-property: value;
+  another-style-property: value;
+}
+```
+A property + value is known as a **declaration**.
+
+## Applying CSS to HTML
+
+### External Stylesheet
+Link a `.css` file:
+```html
+<link rel="stylesheet" href="styles.css">
+```
+Example:
+```css
+h1 {
+  color: deepskyblue;
+  text-align: center;
 }
 ```
 
-Exemple :
+### Internal Stylesheet
+Use `<style>` inside the `<head>`:
+```html
+<style>
+  h1 {
+    color: deepskyblue;
+    text-align: center;
+  }
+</style>
+```
+
+### Inline Styles
+Directly in the HTML tag:
+```html
+<h1 style="color: deepskyblue; text-align: center;">Hello CSS!</h1>
+```
+
+### Invalid CSS
+Browsers ignore unknown properties or values. Use developer tools and validation tools to detect issues.
+
+---
+
+## Advanced CSS
+
+### Selectors
+```css
+* {}                /* all elements */
+section {}          /* section tags */
+.my-class {}        /* class */
+#my-id {}           /* id */
+```
+Prefer classes over IDs for reusability.
+
+### Colors
+Examples:
+```css
+p { color: red; }
+p { color: #f00; }
+p { color: rgb(255,0,0); }
+p { color: hsl(0, 100%, 50%); }
+```
+
+### CSS Variables
+```css
+:root {
+  --main-bg-color: blue;
+}
+body {
+  color: var(--main-bg-color);
+}
+```
+
+### Units and Values
+- `px`: absolute
+- `rem`: relative to `<html>`
+```css
+font-size: 2rem;
+padding: 1.2rem 2rem;
+```
+
+### Line Height
 ```css
 p {
-  color: blue;
-  font-size: 16px;
+  line-height: 1.5;
+}
+```
+
+### Text Decoration
+```css
+a {
+  text-decoration: line-through;
+}
+```
+
+### Text Align
+```css
+p {
+  text-align: center;
+}
+```
+
+### Text Transform
+```css
+p {
+  text-transform: lowercase;
+}
+```
+
+### Letter Spacing
+```css
+a {
+  letter-spacing: -0.4rem;
 }
 ```
 
 ---
 
-## 🧱 Les Selecteurs CSS
-
-### Sélecteurs de base
-- `*` : tous les éléments
-- `element` : tous les `<p>`, `<h1>`, etc.
-- `.class` : tous les éléments ayant cette classe
-- `#id` : un élément unique avec cet id
-
-### Sélecteurs combinés
-- `div p` : tous les `<p>` dans un `<div>`
-- `div > p` : `<p>` enfants directs de `<div>`
-- `div + p` : `<p>` juste après un `<div>`
-- `div ~ p` : tous les `<p>` après un `<div>`
-
-### Sélecteurs d'attribut
+## Pseudo Classes
 ```css
-input[type="text"] { ... }
-a[href^="https"] { ... }
+a:link { color: green; }
+a:visited { color: cadetblue; }
+a:hover { text-decoration: underline; }
+a:active { color: darkcyan; }
 ```
 
----
-
-## 🎨 Propriétés CSS importantes
-
-### Couleurs
-- `color`, `background-color`
-- `rgba()`, `hex`, `hsl()`
-
-### Texte
-- `font-family`, `font-size`, `font-weight`
-- `text-align`, `text-transform`, `line-height`
-
-### Boîte (Box Model)
-- `width`, `height`
-- `padding`, `margin`, `border`
-- `box-sizing: border-box`
-
-### Display
-- `display: block | inline | inline-block | flex | grid | none`
-- `visibility: hidden`
+## CSS Reset / Normalize
+Normalize.css and similar tools are used to ensure consistency across browsers.
 
 ---
 
-## 🧭 Flexbox
-
+## Box Model
 ```css
-display: flex;
+.box {
+  box-sizing: border-box;
+  width: 100px;
+  height: 50px;
+  padding: 30px;
+  margin: 5px;
+}
 ```
 
-### Propriétés de container
-- `flex-direction`, `justify-content`, `align-items`
-- `gap`, `flex-wrap`
+## Flow and Display
+Block vs inline elements and flow layouts.
 
-### Propriétés d’éléments enfants
-- `flex-grow`, `flex-shrink`, `flex-basis`, `align-self`
+## Grid Systems
+From traditional float-based layouts to CSS Grid.
 
 ---
 
-## 🔲 Grid
-
+## Pseudo Elements
 ```css
-display: grid;
+a::after {
+  content: '→';
+}
+p::first-letter {
+  font-size: 130%;
+}
 ```
 
-- `grid-template-columns`, `grid-template-rows`
-- `grid-column`, `grid-row`
-- `gap`, `place-items`
-
----
-
-## 📱 Responsive Design
-
-### Media Queries
+## Attribute Selectors
 ```css
-@media (max-width: 768px) {
-  body {
-    background-color: lightblue;
-  }
+a[href*="facebook"] { color: #3C5A99; }
+a[href^="#"] { background-color: gold; }
+a[href$=".org"] { color: red; }
+```
+
+## Backgrounds
+```css
+.box {
+  background: linear-gradient(...);
+}
+```
+
+## Borders
+```css
+.box {
+  border: 2px double orange;
+  border-radius: 12px;
+}
+```
+
+## Positioning
+```css
+.component {
+  position: sticky;
+  top: 0;
+}
+```
+
+## Transform
+```css
+transform: rotate(45deg);
+transform: scale(2);
+```
+
+## Animation
+```css
+@keyframes example {
+  from { background-color: blue; }
+  to { background-color: red; }
+}
+.box {
+  animation-name: example;
+  animation-duration: 3s;
 }
 ```
 
 ---
 
-## 🔁 Pseudo-classes & Pseudo-éléments
-
-### Pseudo-classes
-- `:hover`, `:focus`, `:nth-child(n)`
-- `:first-child`, `:last-child`
-
-### Pseudo-éléments
-- `::before`, `::after`
-- `::placeholder`, `::selection`
-
----
-
-## 🧙‍♂️ Transitions & Animations
-
-### Transitions
-```css
-transition: all 0.3s ease-in-out;
-```
-
-### Animations
-```css
-@keyframes slidein {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
-}
-```
-
----
-
-## 📦 Autres Concepts
-
-- `z-index` (superposition)
-- `position` (`static`, `relative`, `absolute`, `fixed`, `sticky`)
-- `overflow`, `object-fit`
-- `filter`, `backdrop-filter`
-
----
-
-## 🧠 Bonnes pratiques
-
-- Utiliser les classes (éviter les IDs pour le style)
-- Externaliser le CSS dans un fichier `.css`
-- Nommer les classes de manière explicite
-- Utiliser des variables CSS (`--primary-color`)
-- Préférer le `rem` ou `%` au `px` pour le responsive
-
----
-
-## ✅ À retenir
-
-- CSS est **essentiel pour styliser** vos pages HTML
-- Flexbox et Grid sont **les piliers modernes** du layout
-- Le responsive est **obligatoire** aujourd’hui
-- La **lisibilité** et **modularité** du code CSS est clé pour maintenir un bon projet
+## Resources
+- [MDN CSS Guide](https://developer.mozilla.org/en-US/docs/Web/CSS)
+- [CSS Tricks](https://css-tricks.com/)
+- [Animate.css](https://animate.style)
