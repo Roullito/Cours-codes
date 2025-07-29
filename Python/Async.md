@@ -1,75 +1,75 @@
 
-# 🌀 Python - Asynchronous Execution: Full Course
+# 🌀 Python - Exécution Asynchrone : Cours Complet
 
 ## 🎯 Introduction
-Asynchronous programming is a paradigm that allows multiple tasks to execute concurrently without blocking the main program. In Python, the `asyncio` module along with `async` and `await` keywords form the backbone of asynchronous execution. This model is crucial for building efficient I/O-bound applications such as web scrapers, API clients, or real-time applications.
+La programmation asynchrone est un paradigme qui permet d’exécuter plusieurs tâches de manière concurrente sans bloquer le programme principal. En Python, le module `asyncio` ainsi que les mots-clés `async` et `await` forment le socle de cette exécution. Ce modèle est essentiel pour créer des applications efficaces centrées sur l’I/O comme des scrapers web, des clients API ou des applications en temps réel.
 
 ---
 
-## 🧠 Core Concepts
+## 🧠 Concepts Fondamentaux
 
 ### ✅ Coroutine
-A coroutine is a special type of function that can pause and resume its execution. Declared with `async def`, it runs asynchronously using an event loop.
+Une coroutine est une fonction spéciale qui peut suspendre son exécution puis la reprendre plus tard. Elle est définie avec `async def`.
 
 ```python
 async def greet():
-    print("Hello")
+    print("Bonjour")
 ```
 
-### ✅ Event Loop
-The event loop is responsible for executing asynchronous tasks. It manages scheduling and ensures that tasks yield control efficiently.
+### ✅ Boucle d’événement (Event Loop)
+La boucle d’événement est chargée d’exécuter les tâches asynchrones. Elle gère la planification et garantit que les tâches rendent le contrôle efficacement.
 
 ```python
 import asyncio
 asyncio.run(greet())
 ```
 
-### ✅ async and await
-- `async`: Defines a coroutine.
-- `await`: Pauses the coroutine until the awaited task is completed.
+### ✅ async et await
+- `async` : Définit une fonction asynchrone.
+- `await` : Suspend l’exécution jusqu’à la fin d’une autre coroutine.
 
 ```python
-async def example():
+async def exemple():
     await asyncio.sleep(1)
-    print("Done sleeping")
+    print("Fini de dormir")
 ```
 
 ---
 
-## ⏱ Sequential vs Concurrent Execution
+## ⏱ Exécution Séquentielle vs Concurrente
 
-### Sequential Example
+### Exemple Séquentiel
 
 ```python
 import asyncio
 
-async def say_hello():
+async def dire_bonjour():
     await asyncio.sleep(1)
-    print("Hello")
+    print("Bonjour")
 
-async def say_world():
+async def dire_monde():
     await asyncio.sleep(1)
-    print("World")
+    print("Monde")
 
 async def main():
-    await say_hello()
-    await say_world()
+    await dire_bonjour()
+    await dire_monde()
 
-asyncio.run(main())  # Takes ~2 seconds
+asyncio.run(main())  # Prend ~2 secondes
 ```
 
-### Concurrent Example
+### Exemple Concurrent
 
 ```python
 async def main():
-    await asyncio.gather(say_hello(), say_world())
+    await asyncio.gather(dire_bonjour(), dire_monde())
 
-asyncio.run(main())  # Takes ~1 second
+asyncio.run(main())  # Prend ~1 seconde
 ```
 
 ---
 
-## 🌐 Real-world Example with aiohttp
+## 🌐 Exemple Réel avec aiohttp
 
 ```python
 import aiohttp
@@ -85,7 +85,7 @@ async def main():
     tasks = [fetch_url(url) for url in urls]
     results = await asyncio.gather(*tasks)
     for url, content in zip(urls, results):
-        print(f"{url}: {len(content)} bytes")
+        print(f"{url} : {len(content)} octets")
 
 asyncio.run(main())
 ```
@@ -94,17 +94,17 @@ asyncio.run(main())
 
 ## ⚖️ Coroutines vs Threads
 
-| Feature            | Coroutines                          | Threads                               |
-|-------------------|-------------------------------------|----------------------------------------|
-| Control flow       | Cooperative (`await`)               | Preemptive (OS-controlled)             |
-| Best for           | I/O-bound tasks                     | CPU-bound tasks                        |
-| Memory footprint   | Very lightweight                    | High (context switching, memory)       |
-| Concurrency issues | Minimal                             | Race conditions, deadlocks possible    |
-| Parallelism        | Single-threaded (not parallel)      | Multi-core capable (parallelism)       |
+| Caractéristique     | Coroutines                            | Threads                                 |
+|---------------------|---------------------------------------|------------------------------------------|
+| Contrôle            | Coopératif (`await`)                  | Prédictif (géré par l’OS)                |
+| Optimal pour        | Tâches I/O                            | Tâches CPU                               |
+| Consommation mémoire| Très légère                           | Élevée (changement de contexte)          |
+| Problèmes de concurrence | Très rares                     | Conditions de course, deadlocks possibles|
+| Parallélisme        | Monothreadé (pas de parallélisme réel)| Multicœur (parallélisme réel)            |
 
 ---
 
-## 🧪 Measuring Performance
+## 🧪 Mesurer les performances
 
 ```python
 import time
@@ -118,64 +118,64 @@ def measure_time(n, max_delay):
 
 ---
 
-## 🧱 Task Creation and Scheduling
+## 🧱 Création et Planification des Tâches
 
-### Create a Task
+### Créer une tâche
 
 ```python
-async def delayed():
+async def retarde():
     await asyncio.sleep(1)
     return 1
 
-task = asyncio.create_task(delayed())
-await task  # Waits until completion
+task = asyncio.create_task(retarde())
+await task  # Attente de la complétion
 ```
 
 ---
 
-## 📦 Modules Used
+## 📦 Modules Utilisés
 
-- `asyncio`: Core asynchronous programming library.
-- `aiohttp`: Async HTTP client for web scraping, APIs.
-- `random`: To simulate varied delay or behavior.
-
----
-
-## 🧰 Use Cases
-
-- Chat apps
-- Real-time dashboards
-- Data ingestion pipelines
-- Web crawlers
-- Gaming servers
+- `asyncio` : Bibliothèque centrale pour la programmation asynchrone.
+- `aiohttp` : Client HTTP asynchrone pour le scraping web ou les APIs.
+- `random` : Pour simuler des délais ou comportements variables.
 
 ---
 
-## 🧵 Summary
+## 🧰 Cas d’utilisation
 
-| Concept       | Summary                                                 |
-|---------------|----------------------------------------------------------|
-| Coroutine     | Async function capable of suspending and resuming       |
-| Event Loop    | Central dispatcher for scheduling tasks                 |
-| await         | Pauses execution until awaited coroutine completes      |
-| asyncio.gather| Run multiple coroutines concurrently                    |
-| create_task   | Schedule coroutine as a task for concurrent execution   |
+- Applications de chat
+- Dashboards en temps réel
+- Pipelines de données
+- Crawlers web
+- Serveurs de jeux en ligne
 
 ---
 
-## 📚 Resources
-- [asyncio Documentation](https://docs.python.org/3/library/asyncio.html)
-- [Real Python - Async in Python](https://realpython.com/async-io-python/)
-- [Holberton Project Page - Async Execution](https://github.com/holbertonschool-web_back_end)
+## 🧵 Résumé
+
+| Concept         | Description                                                      |
+|------------------|------------------------------------------------------------------|
+| Coroutine        | Fonction async suspendable/reprenante                           |
+| Event Loop       | Planificateur principal des tâches asynchrones                  |
+| await            | Met en pause jusqu’à fin d’une coroutine                        |
+| asyncio.gather   | Exécute plusieurs coroutines en parallèle                       |
+| create_task      | Lance une coroutine comme tâche indépendante                    |
 
 ---
 
-## ✅ Requirements Reminder (Holberton)
-- Python 3.9 on Ubuntu 20.04
-- Files must be executable and type-annotated
-- `#!/usr/bin/env python3` as first line
-- Respect PEP8 with `pycodestyle 2.5.x`
+## 📚 Ressources
+- [Documentation asyncio](https://docs.python.org/3/library/asyncio.html)
+- [Real Python - Async en Python](https://realpython.com/async-io-python/)
+- [Projet Holberton - Async Execution](https://github.com/holbertonschool-web_back_end)
 
 ---
 
-**🧠 Pro tip**: Use asynchronous programming for I/O-heavy workloads to gain efficiency, scalability, and non-blocking performance!
+## ✅ Rappels pour Holberton
+- Python 3.9 sur Ubuntu 20.04
+- Fichiers exécutables et avec annotations de types obligatoires
+- Première ligne : `#!/usr/bin/env python3`
+- Respect du style PEP8 via `pycodestyle 2.5.x`
+
+---
+
+**🧠 Astuce** : Utilise la programmation asynchrone pour les charges I/O importantes afin de gagner en efficacité, scalabilité et réactivité !
