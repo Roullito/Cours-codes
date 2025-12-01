@@ -372,3 +372,239 @@ Tu dois pouvoir répondre **sans réfléchir trop longtemps** aux questions suiv
 - Expliquer ce qu’est l’**ethical hacking** et le rôle de **Kali Linux**.
 
 ---
+
+# Mise en place de l’environnement de cybersécurité (Kali + VM + VSCode)
+
+Cette partie explique comment installer, configurer et utiliser les outils nécessaires pour travailler proprement sur les projets de cybersécurité :
+
+- Machine virtuelle **Kali Linux**
+- Hyperviseur (**VirtualBox** ou **VMware**)
+- Éditeur de code (**VSCode**)
+- Quelques outils de base dans Kali (terminal, apt, git…)
+
+---
+
+## 1. Vue d’ensemble de l’environnement
+
+Avant de rentrer dans les commandes, il faut comprendre l’architecture :
+
+- **Machine hôte** : ton PC principal (Windows / macOS / Linux)
+- **Hyperviseur** : logiciel qui fait tourner des machines virtuelles
+  - Exemples : **VirtualBox**, **VMware Workstation Player**
+- **Machine virtuelle Kali** : un “PC dans le PC” dédié à la cybersécurité
+- **VSCode** : éditeur de code que tu utilises sur ta machine hôte
+  (et éventuellement connecté à Kali via SSH ou partage de fichiers)
+
+L’idée :
+
+> On **isole** toutes les expériences de hacking / outils de cybersécurité dans **Kali**, pour ne pas casser / polluer ton système principal.
+
+---
+
+## 2. Installation de la machine virtuelle Kali
+
+### 2.1 Installer l’hyperviseur
+
+1. Télécharger et installer **VirtualBox** (recommandé pour débuter) ou **VMware Workstation Player**.
+2. Redémarrer la machine si nécessaire.
+
+### 2.2 Récupérer l’image de Kali
+
+1. Télécharger l’ISO de **Kali Linux 64 bits (Installer)**.
+2. Vérifier que tu disposes d’au moins :
+   - **4 Go de RAM** à allouer à la VM
+   - **40 Go d’espace disque** pour la VM
+
+### 2.3 Créer la VM Kali (exemple VirtualBox)
+
+1. Ouvrir VirtualBox → **New** / **Nouvelle machine**
+2. Paramètres :
+   - Nom : `Kali-2023.2`
+   - Type : `Linux`
+   - Version : `Debian (64-bit)`
+3. Mémoire vive : **4096 MB (4 Go)** minimum si possible
+4. Disque dur virtuel :
+   - Type : VDI
+   - Allocation : Dynamically allocated
+   - Taille : **40 Go** ou plus
+
+### 2.4 Attacher l’ISO et installer Kali
+
+1. Dans les paramètres de la VM → **Storage / Stockage**
+   - Choisir le lecteur CD → sélectionner le fichier ISO de Kali
+2. Démarrer la VM
+3. Sélectionner **Graphical install**
+4. Suivre les étapes :
+   - Langue : `English`
+   - Clavier : `French`
+   - Hostname : par exemple `kali`
+   - Création utilisateur : `user` / `holberton` (comme tu veux)
+   - Mot de passe : suffisamment fort
+   - Partitionnement :
+     - **Guided – use entire disk** (on parle du disque virtuel, pas de ton vrai disque)
+     - `Write changes to disk` → Yes
+
+À la fin, Kali redémarre et tu arrives sur l’écran de login.
+
+---
+
+## 3. Première configuration de Kali
+
+Une fois connecté à Kali (dans la VM) :
+
+### 3.1 Mise à jour du système
+
+Ouvrir un terminal :
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+Cela met à jour la liste des paquets et installe les dernières versions.
+
+### 3.2 Outils de base à vérifier
+
+Kali vient déjà avec beaucoup d’outils, mais pour les projets, tu auras souvent besoin de :
+
+- **git**
+- **curl**
+- **vim** / **nano** (éditeur dans le terminal)
+
+Tu peux vérifier / installer :
+
+```bash
+sudo apt install -y git curl vim
+```
+
+---
+
+## 4. Utiliser le terminal dans Kali
+
+La majorité des projets cyber / Holberton se font **en ligne de commande**.
+Quelques bases indispensables :
+
+### 4.1 Se déplacer dans le système de fichiers
+
+```bash
+pwd          # Afficher le dossier courant
+ls           # Lister les fichiers
+cd /chemin   # Changer de dossier
+cd ..        # Remonter d'un dossier
+mkdir dir    # Créer un dossier
+rm fichier   # Supprimer un fichier
+rm -r dir    # Supprimer un dossier
+```
+
+### 4.2 Créer et éditer un script Bash
+
+```bash
+cd ~
+mkdir holberton_cyber
+cd holberton_cyber
+vim 0-hello_kali.sh
+```
+
+Dans `vim` (exemple de contenu minimal) :
+
+```bash
+#!/bin/bash
+echo "Hello Kali"
+```
+
+Sauvegarder / quitter `vim` :
+
+- `ESC` → `:wq` → `ENTER`
+
+Rendre le script exécutable :
+
+```bash
+chmod +x 0-hello_kali.sh
+./0-hello_kali.sh
+```
+
+---
+
+## 5. Intégrer VSCode dans ton workflow
+
+Tu veux travailler **avec VSCode**, ce qui est très confortable.
+
+Il y a deux grandes façons de faire :
+
+### 5.1 Option simple : fichiers sur Kali, VSCode sur la machine hôte
+
+1. Créer un dossier partagé entre la machine hôte et la VM (dans les paramètres VirtualBox).
+2. Monter ce dossier dans Kali (Guest Additions + configuration des “Shared Folders”).
+3. Ouvrir ce dossier avec VSCode sur la machine hôte.
+4. Dans Kali, tu exécutes les scripts dans le terminal, mais tu les édites avec VSCode côté hôte.
+
+Avantages :
+
+- Tu gardes VSCode “normal” sur ta machine principale.
+- Tu exécutes le code **dans Kali**, comme demandé par le projet.
+
+### 5.2 Option plus avancée : VSCode Remote - SSH vers Kali
+
+1. Installer l’extension **Remote - SSH** dans VSCode.
+2. Configurer Kali pour accepter les connexions SSH (si ce n’est pas déjà activé) :
+
+```bash
+sudo systemctl enable ssh
+sudo systemctl start ssh
+```
+
+3. Récupérer l’IP de Kali :
+
+```bash
+ip addr
+```
+
+4. Depuis VSCode (machine hôte), configurer une connexion SSH vers l’IP de la VM.
+
+Résultat :
+
+> VSCode “ouvre” directement le système de fichiers de Kali,
+> tu édites les fichiers **dans Kali**, tu lances un terminal intégré VSCode qui est en fait un terminal dans Kali.
+
+C’est très confortable pour un workflow dev / cyber avancé.
+
+---
+
+## 6. Bonnes pratiques pour les projets cybersécurité
+
+1. **Toujours exécuter** tes scripts / tests sur **Kali** (ou l’environnement spécifié par le projet).
+2. **Isoler** les outils de pentest dans Kali, pas sur ton OS principal.
+3. Garder un dossier de travail structuré, par exemple :
+
+```text
+~/holberton_cyber/
+  ├── 0x00-intro_cyber/
+  ├── 0x01-network_scanning/
+  └── 0x02-web_security/
+```
+
+4. Utiliser un gestionnaire de versions (git) même pour tes labs :
+
+```bash
+git init
+git add .
+git commit -m "Initial setup: Kali cyber lab"
+```
+
+---
+
+## 7. Rappel : “environnement virtuel” vs “machine virtuelle”
+
+Attention à ne pas confondre :
+
+- **Machine virtuelle (VM)** :
+  Un système complet (Kali) qui tourne à l’intérieur de ton PC via VirtualBox/VMware.
+- **Environnement virtuel Python (`venv`)** :
+  Un mini environnement Python isolé pour un projet (librairies, versions).
+
+Dans ce module **Introduction to Cyber Security**,
+le plus important est d’avoir :
+
+> Une **machine virtuelle Kali** bien installée, à jour,
+> avec un **terminal fonctionnel** et un **workflow clair avec VSCode**.
+
+---
