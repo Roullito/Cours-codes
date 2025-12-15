@@ -190,6 +190,139 @@ nmap -Pn -T4 --open -sC -sV -oN nmap_full.txt <TARGET>
 
 ---
 
+## 6.bis) Boîte à outils d’Active Recon : Nikto, Masscan, Amass, Gobuster
+
+> Objectif : connaître **le rôle** de chaque outil, **quand** l’utiliser, et **les commandes de base** à lancer proprement en lab.
+
+---
+
+### Nikto — Web vulnerability scanning (serveur web)
+
+**À quoi ça sert ?**  
+Nikto est un scanner web “généraliste” orienté **serveur web** : il teste des **mauvaises configurations**, des **fichiers/URLs dangereuses**, des **headers faibles**, et repère parfois des **versions connues**.  
+➡️ Très utile après avoir trouvé un port web (80/443/8080…).
+
+**Quand l’utiliser ?**
+- Tu sais qu’un service HTTP(S) est exposé
+- Tu veux un premier “audit rapide” (bruyant) côté web-server
+
+**Commandes utiles**
+```bash
+nikto -h http://<TARGET>/
+nikto -h https://<TARGET>/ -ssl
+nikto -h http://<TARGET>/ -o nikto.txt
+nikto -h http://<TARGET>/ -Tuning b        # scan plus ciblé (selon tuning)
+```
+
+**Notes importantes**
+- Nikto est **très bruyant** (facilement détectable / bloqué).
+- Les résultats sont un **point de départ**, pas une preuve finale : il faut confirmer manuellement.
+
+---
+
+### Masscan — Scan ultra rapide de grandes plages IP
+
+**À quoi ça sert ?**  
+Masscan est un scanner de ports pensé pour être **très rapide** sur de grands ranges.  
+➡️ Idéal pour “trouver vite” quels hôtes/ports répondent, puis **valider** avec Nmap.
+
+**Quand l’utiliser ?**
+- Tu as une **plage d’IP** (ex: `/24`, `/16`) et tu veux repérer les ports ouverts rapidement
+- Tu fais une phase “découverte” avant un Nmap plus précis
+
+**Commandes utiles (lab)**
+```bash
+sudo masscan <TARGET>/32 -p1-65535 --rate 1000
+sudo masscan 10.0.0.0/24 -p22,80,443,445,3389 --rate 1000
+sudo masscan 10.0.0.0/24 -p1-1000 --rate 500 -oL masscan.txt
+```
+
+**Notes importantes**
+- `--rate` contrôle la vitesse : trop haut = pertes, faux négatifs, blocage.
+- Masscan détecte “open”, mais **Nmap** est meilleur pour **service/version**.
+
+---
+
+### Amass — Découverte de sous-domaines & énumération DNS
+
+**À quoi ça sert ?**  
+Amass sert à la **découverte de sous-domaines** et à l’**énumération DNS**. Il combine souvent plusieurs méthodes (OSINT + brute force + résolutions DNS selon options).
+
+**Quand l’utiliser ?**
+- Tu as un **domaine** et tu veux cartographier : `api.`, `dev.`, `admin.`, `mail.`, etc.
+- Tu veux enrichir ta surface d’attaque/d’audit (toujours en scope autorisé)
+
+**Commandes utiles**
+```bash
+amass enum -d example.com
+amass enum -d example.com -o amass_subs.txt
+amass enum -d example.com -ip             # tente d’associer sous-domaines → IP
+amass enum -d example.com -brute          # brute force (plus bruyant)
+amass enum -d example.com -active         # méthodes actives (plus intrusif)
+```
+
+**Notes importantes**
+- `-active` / `-brute` = plus de bruit, plus de traces.
+- Toujours respecter le **scope** (domaines autorisés, pas “tout Internet”).
+
+---
+
+### Gobuster — Directory enumeration (et DNS/VHOST)
+
+**À quoi ça sert ?**  
+Gobuster fait du “bruteforce” contrôlé avec wordlists pour :
+- **dir** : découvrir des **répertoires/fichiers** web (directory enumeration)
+- **dns** : découvrir des **sous-domaines**
+- **vhost** : découvrir des **virtual hosts** (multi-sites sur une même IP)
+
+#### 1) Mode `dir` — Directory enumeration (le plus courant)
+**Quand l’utiliser ?**
+- Tu as un site web, tu veux trouver `/admin`, `/login`, `/uploads`, etc.
+
+**Commandes utiles**
+```bash
+gobuster dir -u http://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt
+gobuster dir -u http://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt -x php,html,txt
+gobuster dir -u http://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt -t 50
+gobuster dir -u https://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt -k
+```
+
+**Options à connaître**
+- `-x` : extensions à tester (`php`, `html`, `txt`…)
+- `-t` : threads (plus haut = plus rapide mais plus bruyant)
+- `-k` : ignore les erreurs TLS (certifs lab)
+
+#### 2) Mode `dns` — Subdomain bruteforce
+```bash
+gobuster dns -d example.com -w <wordlist>
+```
+
+#### 3) Mode `vhost` — Virtual host discovery
+```bash
+gobuster vhost -u http://<TARGET>/ -w <wordlist>
+```
+
+**Notes importantes**
+- La qualité du résultat dépend beaucoup de la **wordlist**.
+- Sur certains sites, il faut filtrer par codes HTTP (200/301/302) et éviter les faux positifs.
+
+---
+
+### Comment choisir rapidement le bon outil ?
+
+- **Tu veux cartographier des ports/services** → Nmap (ou Masscan puis Nmap)
+- **Tu veux scanner un serveur web pour issues communes** → Nikto
+- **Tu veux découvrir des sous-domaines/DNS** → Amass (ou Gobuster dns)
+- **Tu veux trouver des répertoires/fichiers cachés** → Gobuster dir
+- **Tu veux très vite “balayer” une plage IP** → Masscan (puis validation Nmap)
+
+---
+
+### Bonnes pratiques (lab)
+- Commence “soft” (moins bruyant), augmente seulement si nécessaire.
+- Sauvegarde tes outputs : `-oN`, `-o`, fichiers texte.
+- Interprète : un résultat n’est utile que si tu sais expliquer “ce que ça implique” et “ce que tu fais ensuite”.
+
 ## 7) Banner grabbing : identifier un service “à la main” (telnet / netcat)
 
 ### 7.1 Pourquoi c’est utile ?
