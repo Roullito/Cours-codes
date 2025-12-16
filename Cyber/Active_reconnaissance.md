@@ -1,639 +1,528 @@
 # Active Reconnaissance — Cours ultra complet (Kali Linux)
 
-> **Contexte** : ce cours est conçu pour un **environnement de lab autorisé** (votre cible **cyber_netsec_0x02**).  
-> **Règle d’or** : on ne scanne / teste **que** des machines pour lesquelles on a une autorisation explicite.
+> **Contexte** : cours conçu pour un **environnement de lab autorisé** (CTF / machine de formation type `cyber_netsec_0x02`).  
+> **Règle d’or** : ne scanne / teste **que** des machines pour lesquelles tu as une autorisation explicite (scope).  
+> **But** : apprendre à **observer**, **déduire**, **valider**, puis **documenter**.
 
 ---
 
-## 0) Objectifs pédagogiques (à savoir expliquer sans Google)
+## 0) Objectifs pédagogiques
 
-À la fin, vous devez pouvoir expliquer clairement :
+À la fin, tu dois pouvoir expliquer clairement (sans Google) :
 
-- Ce qu’est la **reconnaissance active**
-- Pourquoi elle est critique en cybersécurité
-- Comment **Wappalyzer** aide à profiler une appli web
-- Ce qu’est la **DNS enumeration**
-- Comment **énumérer SMTP** en CLI
-- Comment faire du **OS fingerprinting** (et ses limites)
-- Ce qu’est **sqlmap** et comment l’utiliser **de façon responsable** en lab
+- C’est quoi la **reconnaissance active** (et la différence avec la passive)
+- Pourquoi c’est critique en cybersécurité (attaque **et** défense)
+- Comment profiler une appli avec **Wappalyzer / WhatWeb / headers**
+- Les bases de **DNS enumeration** (records, subdomains, AXFR)
+- Les bases d’énumération **SMTP** (banner, EHLO, extensions)
+- Comment faire un **OS fingerprinting** (et pourquoi c’est imparfait)
+- Ce qu’est une **SQL injection**, comment elle naît, comment on la bloque
+- Comment **sqlmap** détecte une injection et **comment il “dump”** une DB en lab
 
 ---
 
-## 1) Reconnaissance : le “repérage” avant l’action
+## 1) Active reconnaissance : définition et enjeux
 
-### 1.1 Reconnaissance passive vs active
-- **Passive recon** : vous collectez de l’info **sans toucher la cible** directement (OSINT, fuites, moteurs de recherche, archives…).
-- **Active recon** : vous envoyez **des paquets/requêtes** à la cible pour obtenir des réponses (ICMP, TCP, HTTP, SMTP…).  
-  ➜ La cible (ou ses logs/IDS) **peut vous voir**.
-
-**Analogie** :
-- Passive = regarder la maison depuis la rue + chercher des infos publiques.
-- Active = sonner à la porte, tester la poignée, regarder par la fenêtre. Ça laisse des traces.
+### 1.1 Passive vs active (simple)
+- **Passive recon** : tu observes sans toucher la cible (OSINT, DNS publics, archives web…).
+- **Active recon** : tu **interagis** avec la cible (ping, scan de ports, requêtes HTTP, banner grabbing…).
 
 ### 1.2 Pourquoi c’est important ?
-La recon active sert à :
-- **Cartographier** : IP, ports, services, versions, techno web
-- **Réduire l’incertitude** : “Qu’est-ce qui tourne vraiment ?”
-- **Prioriser le risque** : services exposés, versions obsolètes, endpoints sensibles
-- **Préparer la phase suivante** : tests, durcissement, remédiation, pentest autorisé
+- Côté attaquant : trouver **surface d’attaque** (services, versions, endpoints, mauvaises configs).
+- Côté défense : comprendre ce qu’un adversaire peut apprendre et **réduire l’exposition** (hardening, segmentation, WAF, logs).
 
 ---
 
-## 2) Accéder et lancer une machine cible (lab)
+## 2) Accéder à la cible (lab) et valider la connectivité
 
-Selon votre environnement, la “cible” peut être :
-- une VM locale (VirtualBox/VMware)
-- une machine de lab distante (VPN)
-- une instance cloud isolée
+### 2.1 Checklist rapide
+- VPN connecté ✅
+- IP de la cible récupérée ✅
+- Scope clair (IP/host + ce que tu as le droit de faire) ✅
 
-### 2.1 Checklist avant de commencer
-1. **Vous connaissez l’IP/hostname** de la cible (ex: `cyber_netsec_0x02`)
-2. Vous êtes sur Kali et votre réseau est prêt (VPN/bridge/nat configuré)
-3. Vous notez : date/heure, cible, scope, objectifs (utile pour un rapport)
-
-### 2.2 Validation de connectivité (minimum)
+### 2.2 Ping (ICMP)
 ```bash
-ip a; ip r
-ping -c 1 <TARGET>
+ping -c 1 <TARGET_IP>
 ```
-Si `ping` ne répond pas, ça ne veut pas dire “down” (ICMP peut être filtré). On continuera avec du TCP.
+- Si ça répond : la machine est joignable (au moins en ICMP).
+- Si ça ne répond pas : **ça ne prouve pas** qu’elle est down (ICMP peut être filtré).
 
-### 2.3 Bonne pratique : fixer un nom local (optionnel)
-Dans un lab, c’est pratique de mapper un hostname :
+### 2.3 Résolution du nom “endpoint” (ex: `active.hbtn`)
+Dans beaucoup de labs, le “endpoint” est un **nom DNS interne** non résolu par ton système tant que tu ne le mappes pas.
+
+Ajouter un mapping local :
 ```bash
-echo "<IP> cyber_netsec_0x02" | sudo tee -a /etc/hosts
+sudo bash -c 'echo "<TARGET_IP> active.hbtn" >> /etc/hosts'
+```
+
+Vérifier :
+```bash
+getent hosts active.hbtn
+curl -I http://active.hbtn/
+```
+
+> Astuce : si tu changes de container / IP, évite d’empiler des entrées. Supprime les anciennes lignes `active.hbtn` dans `/etc/hosts`.
+
+---
+
+## 3) Méthode simple (celle qui marche tout le temps)
+
+### 3.1 La “4 passes”
+1) **Reachability** : ping / routes / DNS
+2) **Ports** : scan (rapide → complet)
+3) **Services** : versions, bannières, scripts
+4) **App-layer** : HTTP endpoints, content discovery, auth, injections (si dans le scope)
+
+### 3.2 Discipline de base
+- Scans **progressifs** (ne pars pas direct en full scan agressif).
+- Notes au fur et à mesure : **commande → résultat → interprétation → prochaine action**.
+
+---
+
+## 4) Traceroute : comprendre le chemin
+
+### 4.1 Pourquoi
+Identifier la route, latence, filtrages, sauts.
+
+```bash
+traceroute <TARGET_IP>
+# ou (souvent plus fiable sur certains réseaux)
+traceroute -I <TARGET_IP>
 ```
 
 ---
 
-## 3) Outils & mindset : une méthode simple
+## 5) Scan de ports : Nmap (la base)
 
-### 3.1 Méthode “4 passes”
-1) **Reachability** : la cible répond-elle à quelque chose ?
-2) **Découverte** : quels ports/services sont ouverts ?
-3) **Identification** : quelles versions/technos ?
-4) **Approfondissement ciblé** : DNS/SMTP/HTTP/OS fingerprinting, etc.
+### 5.1 Les concepts (à connaître)
+- Port **open / closed / filtered**
+- TCP SYN scan (`-sS`) vs connect scan (`-sT`)
+- Service/version detection (`-sV`)
+- Scripts NSE (`--script`)
+- Host discovery (`-Pn` = “ne fais pas de ping préalable”)
 
-### 3.2 Un scan propre = précis + modéré
-- Évitez de spammer (bruit + faux positifs + blocage)
-- Sauvegardez vos résultats (`-oN`, `-oX`, `-oG`)
-- Notez ce que vous faites (même en CTF/lab)
+### 5.2 Commandes utiles (réalistes)
+Top ports (rapide) :
+```bash
+nmap -n -Pn <TARGET_IP>
+```
+
+Top 1000 + versions :
+```bash
+nmap -n -Pn -sV <TARGET_IP>
+```
+
+Scan complet TCP (plus long) :
+```bash
+nmap -n -Pn -p- <TARGET_IP>
+```
+
+Ports trouvés → scan précis :
+```bash
+nmap -n -Pn -sV -p <PORTS_COMMA_SEPARATED> <TARGET_IP>
+```
+
+Sortie “open ports only” vers un fichier (style projet) :
+```bash
+nmap -n -Pn <TARGET_IP> | grep -E "/tcp\s+open" | cut -d/ -f1 | paste -sd ", " - > 0-ports.txt
+```
+
+### 5.3 Lire un résultat Nmap (mini-guide)
+- **PORT/STATE/SERVICE** : “open” t’indique ce qui écoute.
+- **VERSION** : oriente tes hypothèses (web server, sshd, smtp…).
+- Ensuite tu passes en **énumération** du service (HTTP, SMTP, SSH…).
 
 ---
 
-## 4) Ping (ICMP) : “Es-tu là ?”
-
-### 4.1 À quoi sert ping ?
-- Tester la **latence** et la **reachability** via ICMP Echo Request/Reply.
-- Donner une première idée de la stabilité réseau.
-
-### 4.2 Commandes utiles
-```bash
-ping -c 4 <TARGET>          # 4 paquets
-ping -c 2 -W 1 <TARGET>     # timeout court
-ping -c 5 -i 0.2 <TARGET>   # intervalle (attention au bruit)
-```
-
-### 4.3 Limites
-- ICMP peut être **bloqué** : ping fail ≠ machine down.
-- Certains systèmes répondent différemment selon firewall.
-
----
-
-## 5) Traceroute : “Par où je passe ?”
-
-### 5.1 Ce que fait traceroute
-Traceroute tente d’identifier les **routeurs intermédiaires** entre vous et la cible, en jouant sur le champ **TTL** (Time To Live).
-
-### 5.2 Commandes utiles
-```bash
-traceroute <TARGET>         # classique
-traceroute -n <TARGET>      # pas de résolution DNS (plus rapide)
-traceroute -T <TARGET>      # TCP SYN (utile si UDP/ICMP filtrés)
-```
-
-### 5.3 Interprétation rapide
-- Des `* * *` = pas de réponse (filtrage, rate limit…)
-- Un hop très lent = congestion/filtrage/route longue
-- En lab, ça sert surtout à valider “je passe bien par le réseau attendu”.
-
----
-
-## 6) Nmap : l’outil central d’active recon
-
-### 6.1 Concepts clés
-- **Port** : “porte” d’entrée vers un service (HTTP, SSH, SMTP…)
-- **État** : open / closed / filtered
-- **Service** : ce qui répond sur ce port
-- **Version** : info critique (vulnérabilités liées à version)
-
-### 6.2 Les “Top commandes Nmap” (vraiment utiles)
-> Adaptez les timings au lab. Plus agressif = plus bruyant.
-
-**1) Découverte simple**
-```bash
-nmap <TARGET>
-```
-
-**2) Scan des 1000 ports TCP “classiques” + output**
-```bash
-nmap -oN scan.txt <TARGET>
-```
-
-**3) Tous les ports TCP**
-```bash
-nmap -p- <TARGET>
-```
-
-**4) Service / version detection**
-```bash
-nmap -sV <TARGET>
-```
-
-**5) Default scripts (NSE) + version**
-```bash
-nmap -sC -sV <TARGET>
-```
-
-**6) “Aggressive” (OS detect + traceroute + scripts + versions)**
-```bash
-nmap -A <TARGET>
-```
-
-**7) OS fingerprinting**
-```bash
-sudo nmap -O <TARGET>
-```
-
-**8) UDP (plus lent, souvent filtré)**
-```bash
-sudo nmap -sU --top-ports 50 <TARGET>
-```
-
-### 6.3 Options ultra fréquentes
-- `-Pn` : ne pas ping avant (utile si ICMP bloqué)
-- `-T0..T5` : timing (T3 par défaut, T4 souvent OK en lab)
-- `--open` : n’afficher que les ports ouverts
-- `-vv` : plus verbeux
-- `-oN/-oX/-oG` : outputs (normal / XML / grepable)
-
-Exemple “propre” :
-```bash
-nmap -Pn -T4 --open -sC -sV -oN nmap_full.txt <TARGET>
-```
-
-### 6.4 Lire un résultat Nmap (mini guide)
-- **PORT / STATE / SERVICE / VERSION** = base
-- Si `http` détecté → on part sur du web fingerprinting (Wappalyzer + curl)
-- Si `smtp` → banner grabbing + énumération SMTP
-- Si `mysql/postgresql` → attention, ne tentez pas d’accès non autorisé (en lab seulement)
-
----
-
-## 6.bis) Boîte à outils d’Active Recon : Nikto, Masscan, Amass, Gobuster
-
-> Objectif : connaître **le rôle** de chaque outil, **quand** l’utiliser, et **les commandes de base** à lancer proprement en lab.
-
----
-
-### Nikto — Web vulnerability scanning (serveur web)
+## 6) Masscan : scanner très vite de grandes plages (à utiliser avec prudence)
 
 **À quoi ça sert ?**  
-Nikto est un scanner web “généraliste” orienté **serveur web** : il teste des **mauvaises configurations**, des **fichiers/URLs dangereuses**, des **headers faibles**, et repère parfois des **versions connues**.  
-➡️ Très utile après avoir trouvé un port web (80/443/8080…).
+Masscan est un scanner très rapide (asynchrone) adapté aux **grandes plages IP**. En lab, utile pour comprendre la différence “fast sweep” vs “scan détaillé”.
 
 **Quand l’utiliser ?**
-- Tu sais qu’un service HTTP(S) est exposé
-- Tu veux un premier “audit rapide” (bruyant) côté web-server
+- Quand tu as beaucoup d’IPs (ex: /24) et que tu veux juste savoir “qui a le port 80/443 ouvert”.
 
-**Commandes utiles**
+Exemple (ports web) :
 ```bash
-nikto -h http://<TARGET>/
-nikto -h https://<TARGET>/ -ssl
-nikto -h http://<TARGET>/ -o nikto.txt
-nikto -h http://<TARGET>/ -Tuning b        # scan plus ciblé (selon tuning)
+sudo masscan <CIDR_OR_RANGE> -p80,443 --rate 1000
 ```
 
-**Notes importantes**
-- Nikto est **très bruyant** (facilement détectable / bloqué).
-- Les résultats sont un **point de départ**, pas une preuve finale : il faut confirmer manuellement.
+- `--rate` contrôle l’agressivité (plus haut = plus de paquets/sec).
+- Ensuite, tu confirmes toujours avec **Nmap** sur les IPs trouvées.
+
+> ⚠️ Masscan est bruyant. Hors lab, tu peux provoquer des alertes et des blocages.
 
 ---
 
-### Masscan — Scan ultra rapide de grandes plages IP
+## 7) Banner grabbing : telnet / netcat (nc)
 
-**À quoi ça sert ?**  
-Masscan est un scanner de ports pensé pour être **très rapide** sur de grands ranges.  
-➡️ Idéal pour “trouver vite” quels hôtes/ports répondent, puis **valider** avec Nmap.
+### 7.1 Pourquoi
+Beaucoup de services “parlent” dès la connexion (bannière). Ça te donne :
+- produit + version
+- parfois un hostname interne
+- parfois des capacités/commands
 
-**Quand l’utiliser ?**
-- Tu as une **plage d’IP** (ex: `/24`, `/16`) et tu veux repérer les ports ouverts rapidement
-- Tu fais une phase “découverte” avant un Nmap plus précis
-
-**Commandes utiles (lab)**
+### 7.2 Netcat (couteau suisse)
 ```bash
-sudo masscan <TARGET>/32 -p1-65535 --rate 1000
-sudo masscan 10.0.0.0/24 -p22,80,443,445,3389 --rate 1000
-sudo masscan 10.0.0.0/24 -p1-1000 --rate 500 -oL masscan.txt
+nc -nv <TARGET_IP> <PORT>
 ```
 
-**Notes importantes**
-- `--rate` contrôle la vitesse : trop haut = pertes, faux négatifs, blocage.
-- Masscan détecte “open”, mais **Nmap** est meilleur pour **service/version**.
+Exemples fréquents :
+- HTTP : `nc -nv <IP> 80` puis tape manuellement une requête `GET / HTTP/1.1`
+- SMTP : `nc -nv <IP> 25` puis `EHLO test`
 
 ---
 
-### Amass — Découverte de sous-domaines & énumération DNS
+## 8) Web fingerprinting : Wappalyzer + WhatWeb + Headers
 
-**À quoi ça sert ?**  
-Amass sert à la **découverte de sous-domaines** et à l’**énumération DNS**. Il combine souvent plusieurs méthodes (OSINT + brute force + résolutions DNS selon options).
+### 8.1 Wappalyzer (browser)
+- Techno front (framework, analytics)
+- Indices backend (nginx, CDN, CMS, libs)
 
-**Quand l’utiliser ?**
-- Tu as un **domaine** et tu veux cartographier : `api.`, `dev.`, `admin.`, `mail.`, etc.
-- Tu veux enrichir ta surface d’attaque/d’audit (toujours en scope autorisé)
-
-**Commandes utiles**
+### 8.2 WhatWeb (CLI)
 ```bash
-amass enum -d example.com
-amass enum -d example.com -o amass_subs.txt
-amass enum -d example.com -ip             # tente d’associer sous-domaines → IP
-amass enum -d example.com -brute          # brute force (plus bruyant)
-amass enum -d example.com -active         # méthodes actives (plus intrusif)
+whatweb http://active.hbtn
 ```
 
-**Notes importantes**
-- `-active` / `-brute` = plus de bruit, plus de traces.
-- Toujours respecter le **scope** (domaines autorisés, pas “tout Internet”).
+### 8.3 Headers HTTP (curl)
+```bash
+curl -I http://active.hbtn/
+```
+Cherche :
+- `Server: nginx/1.18.0`
+- cookies, redirections, CSP, HSTS, etc.
 
 ---
 
-### Gobuster — Directory enumeration (et DNS/VHOST)
+## 9) Gobuster : directory enumeration (content discovery)
 
-**À quoi ça sert ?**  
-Gobuster fait du “bruteforce” contrôlé avec wordlists pour :
-- **dir** : découvrir des **répertoires/fichiers** web (directory enumeration)
-- **dns** : découvrir des **sous-domaines**
-- **vhost** : découvrir des **virtual hosts** (multi-sites sur une même IP)
+**But** : découvrir des chemins non visibles dans le menu (ex: `/admin`, `/api`, `/backup`).
 
-#### 1) Mode `dir` — Directory enumeration (le plus courant)
-**Quand l’utiliser ?**
-- Tu as un site web, tu veux trouver `/admin`, `/login`, `/uploads`, etc.
-
-**Commandes utiles**
+Exemple simple :
 ```bash
-gobuster dir -u http://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt
-gobuster dir -u http://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt -x php,html,txt
-gobuster dir -u http://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt -t 50
-gobuster dir -u https://<TARGET>/ -w /usr/share/wordlists/dirb/common.txt -k
+gobuster dir -u http://active.hbtn/ -w /usr/share/wordlists/dirb/common.txt
 ```
 
-**Options à connaître**
-- `-x` : extensions à tester (`php`, `html`, `txt`…)
-- `-t` : threads (plus haut = plus rapide mais plus bruyant)
-- `-k` : ignore les erreurs TLS (certifs lab)
+### 9.1 Gérer les “wildcard responses” (302 vers `/`)
+Parfois, le serveur renvoie un code “valide” même pour des chemins inexistants (ex: redirection 302 vers `/`). Gobuster te prévient.
 
-#### 2) Mode `dns` — Subdomain bruteforce
+Solutions courantes :
+- Exclure le status code “wildcard”
+- Exclure une taille de réponse constante
+- Utiliser le mode wildcard
+
+Exemple (exclure longueur + ajuster codes) :
 ```bash
-gobuster dns -d example.com -w <wordlist>
+gobuster dir -u http://active.hbtn/   -w /usr/share/wordlists/dirb/common.txt   -s "200,204,301,302,307,401,403"   -b ""   --exclude-length 189   -t 30   -o gobuster.txt
 ```
 
-#### 3) Mode `vhost` — Virtual host discovery
-```bash
-gobuster vhost -u http://<TARGET>/ -w <wordlist>
-```
-
-**Notes importantes**
-- La qualité du résultat dépend beaucoup de la **wordlist**.
-- Sur certains sites, il faut filtrer par codes HTTP (200/301/302) et éviter les faux positifs.
+Ce que ça fait :
+- `dir` : mode énumération répertoires/fichiers
+- `-u` : base URL
+- `-w` : wordlist
+- `-s` : codes considérés “intéressants”
+- `-b ""` : désactive la blacklist (404) par défaut (sinon conflit avec `-s`)
+- `--exclude-length 189` : ignore les réponses dont la taille = 189 (souvent la page de redirect)
+- `-t` : threads (plus haut = plus rapide, plus bruyant)
+- `-o` : output file
 
 ---
 
-### Comment choisir rapidement le bon outil ?
+## 10) Nikto : web vulnerability scanning (quick checks)
 
-- **Tu veux cartographier des ports/services** → Nmap (ou Masscan puis Nmap)
-- **Tu veux scanner un serveur web pour issues communes** → Nikto
-- **Tu veux découvrir des sous-domaines/DNS** → Amass (ou Gobuster dns)
-- **Tu veux trouver des répertoires/fichiers cachés** → Gobuster dir
-- **Tu veux très vite “balayer” une plage IP** → Masscan (puis validation Nmap)
+**But** : scanner rapidement un serveur web pour repérer :
+- headers manquants
+- fichiers/paths connus
+- configs dangereuses
+- versions vulnérables (indices)
+
+Exemple :
+```bash
+nikto -h http://active.hbtn
+```
+
+> Nikto n’est pas “la vérité”. Il donne des **pistes** à valider.
 
 ---
 
-### Bonnes pratiques (lab)
-- Commence “soft” (moins bruyant), augmente seulement si nécessaire.
-- Sauvegarde tes outputs : `-oN`, `-o`, fichiers texte.
-- Interprète : un résultat n’est utile que si tu sais expliquer “ce que ça implique” et “ce que tu fais ensuite”.
+## 11) DNS Enumeration + Amass
 
-## 7) Banner grabbing : identifier un service “à la main” (telnet / netcat)
-
-### 7.1 Pourquoi c’est utile ?
-Avant d’automatiser, savoir “parler” au service aide à :
-- confirmer que le port n’est pas un faux positif
-- voir un **banner** (ex: “OpenSSH_8.4”, “nginx/1.18”)
-- comprendre le protocole
-
-### 7.2 Telnet (simple, mais ancien)
-Telnet peut ouvrir une connexion TCP et afficher ce que le service renvoie.
+### 11.1 Outils de base (records)
 ```bash
-telnet <TARGET> 80
-telnet <TARGET> 25
+dig active.hbtn
+dig A active.hbtn
+dig MX active.hbtn
+dig TXT active.hbtn
+host active.hbtn
+nslookup active.hbtn
 ```
-> Telnet est **non chiffré** et obsolète pour l’admin, mais pratique en lab pour tester une connexion.
 
-### 7.3 Netcat (nc) : le couteau suisse
+### 11.2 Zone transfer (AXFR) — concept
+Si un serveur DNS est mal configuré, tu peux parfois demander un “transfert de zone” :
 ```bash
-nc -vz <TARGET> 80          # test de connectivité (verbose + zero-I/O)
-nc <TARGET> 80              # se connecter
-printf "HEAD / HTTP/1.0\r\n\r\n" | nc <TARGET> 80
+dig axfr <DOMAIN> @<NS_SERVER>
+```
+En vrai, c’est souvent bloqué (et c’est normal).
+
+### 11.3 Amass (subdomain enumeration)
+Amass est très utilisé pour découvrir des sous-domaines (OSINT + résolutions).
+En lab, ça te montre la logique “subdomain discovery”.
+
+Exemple :
+```bash
+amass enum -d <DOMAIN>
 ```
 
 ---
 
-## 8) Web fingerprinting (Wappalyzer + CLI)
+## 12) SMTP enumeration (CLI)
 
-### 8.1 Wappalyzer : à quoi ça sert ?
-Wappalyzer détecte des technologies côté web :
-- serveur web (nginx, Apache)
-- frameworks (Django, React, Laravel…)
-- CMS (WordPress…)
-- analytics, CDNs, libs JS…
-
-**Pourquoi c’est de l’active recon ?**  
-Parce que votre navigateur fait des requêtes HTTP vers la cible.
-
-### 8.2 Comment l’utiliser efficacement
-- Ouvrez le site cible dans le navigateur
-- Regardez Wappalyzer : techno détectées
-- Croisez avec une vérification CLI :
-
+Banner + EHLO :
 ```bash
-curl -I http://<TARGET>/
-curl -s http://<TARGET>/ | head
-whatweb http://<TARGET>/    # souvent dispo sur Kali
+nc <TARGET_IP> 25
+# puis
+EHLO test
 ```
 
-### 8.3 Limites de Wappalyzer
-- Détection basée sur **signatures** → faux positifs possibles
-- Certaines technos sont masquées (headers modifiés, reverse proxies)
+Nmap NSE (si port SMTP ouvert) :
+```bash
+nmap -n -Pn -p25 --script smtp-commands,smtp-enum-users <TARGET_IP>
+```
 
 ---
 
-## 9) DNS Enumeration : “Quels noms, quelles zones, quels enregistrements ?”
+## 13) OS fingerprinting (et ses limites)
 
-### 9.1 C’est quoi ?
-La DNS enumeration consiste à découvrir :
-- les enregistrements **A/AAAA** (IP)
-- **CNAME** (alias)
-- **MX** (serveurs mail)
-- **NS** (serveurs DNS)
-- **TXT** (SPF, DKIM… parfois infos utiles)
-- des **sous-domaines** (subdomain discovery)
-
-### 9.2 Outils CLI essentiels
-**dig**
+Nmap OS detection :
 ```bash
-dig <domain> A
-dig <domain> MX
-dig <domain> NS
-dig <domain> TXT
-dig @<dns_server> <domain> ANY
+sudo nmap -n -Pn -O <TARGET_IP>
 ```
 
-**host / nslookup**
-```bash
-host <domain>
-nslookup <domain>
-```
-
-### 9.3 Zone transfer (AXFR) — concept important
-Si un serveur DNS est mal configuré, il peut autoriser un **transfert de zone**.
-```bash
-dig @<ns-server> <domain> AXFR
-```
-> À faire **uniquement** en lab autorisé. Très révélateur : liste complète des noms.
-
-### 9.4 Subdomain enumeration (idée)
-En lab, on peut tester des sous-domaines communs :
-- `dev`, `staging`, `api`, `admin`, `mail`, `vpn`, `intranet`
-
-Approche simple (concept) :
-- wordlist + résolution DNS
-- outils : `dnsrecon`, `fierce` (souvent disponibles sur Kali)
+À savoir :
+- nécessite souvent privilèges (raw sockets)
+- dépend de la latence, des firewalls, du NAT, etc.
+- donne un **guess** (probabiliste), pas une certitude
 
 ---
 
-## 10) Énumération SMTP (mail) en ligne de commande
+## 14) SQL Injection : comment ça fonctionne vraiment
 
-### 10.1 Pourquoi c’est intéressant ?
-SMTP peut révéler :
-- le **banner** (produit + version)
-- les commandes supportées (`EHLO`)
-- parfois des comportements d’énumération d’utilisateurs (souvent désactivé)
+### 14.1 Le bug en une phrase
+Une SQL injection arrive quand une appli **concatène** une entrée utilisateur dans une requête SQL **sans** requêtes préparées / paramétrage sûr.
 
-### 10.2 Rappels rapides SMTP
-- Port classique : `25` (serveur à serveur)
-- Souvent aussi : `587` (submission), `465` (smtps legacy)
-
-### 10.3 Banner grabbing SMTP avec nc/telnet
-```bash
-nc <TARGET> 25
-# ou
-telnet <TARGET> 25
+### 14.2 Exemple mental (dangereux vs safe)
+**Dangereux** (concat) :
+```sql
+SELECT * FROM users WHERE username = '<USER_INPUT>';
 ```
 
-Ensuite (manuellement) :
-- tapez `EHLO test.local`
-- observez les extensions (SIZE, STARTTLS, AUTH, etc.)
-- puis `QUIT`
-
-> **Ne forcez pas d’auth** hors lab. Ici l’objectif est l’identification.
-
-### 10.4 Nmap NSE pour SMTP
-Nmap a des scripts utiles (selon disponibilité) :
-```bash
-nmap -p 25,465,587 --script smtp-commands <TARGET>
-nmap -p 25,465,587 --script smtp-enum-users <TARGET>
+**Safe** (requête préparée / paramètre) :
+```sql
+SELECT * FROM users WHERE username = ?;
 ```
-> `smtp-enum-users` peut être intrusif. En lab, ok si demandé, sinon restez sur `smtp-commands`.
+
+### 14.3 Pourquoi “ça marche”
+Le SQL est un langage. Si ton input est interprété comme du SQL, tu peux :
+- casser la structure (quotes, opérateurs)
+- modifier la logique (vrai/faux)
+- extraire des données si l’app renvoie le résultat
+
+### 14.4 Les grandes familles (niveau concept)
+- **Error-based** : erreurs SQL visibles → info leak
+- **Union-based** : `UNION SELECT ...` pour “coller” des résultats
+- **Boolean-based blind** : tu déduis des infos via vrai/faux (page change)
+- **Time-based blind** : tu déduis via le temps de réponse (`SLEEP`)
+- **Out-of-band** : exfil via DNS/HTTP (plus rare)
+
+### 14.5 Défense (à savoir expliquer)
+- Requêtes préparées / ORM correctement utilisé
+- Validation stricte côté serveur (types, longueur)
+- Principe de moindre privilège pour l’utilisateur DB
+- WAF / RASP (utile mais pas suffisant)
+- Logs + monitoring + tests SAST/DAST
 
 ---
 
-## 11) OS Fingerprinting : “Quel OS est en face ?”
+## 15) sqlmap : comment ça détecte et comment ça “dump” une DB (lab)
 
-### 11.1 C’est quoi ?
-L’OS fingerprinting tente d’inférer l’OS (Linux/Windows/routeur…) à partir de :
-- réponses TCP/IP (TTL, Window Size, flags)
-- comportement réseau
-- signatures connues
+> ⚠️ À n’utiliser que sur **cibles autorisées** (CTF/lab). Les exemples ci-dessous utilisent des placeholders.
 
-### 11.2 OS fingerprinting avec Nmap
-```bash
-sudo nmap -O <TARGET>
-nmap -A <TARGET>            # inclut OS detect (si possible)
-```
+### 15.1 Le workflow “propre”
+1) Identifier un **point d’entrée** (param GET/POST, segment d’URL, cookie)
+2) Lancer sqlmap en **détection** (preuve d’injection)
+3) Fingerprint DBMS (MySQL/Postgres…)
+4) Enumération : DBs → tables → colonnes
+5) Extraction ciblée (dump) **uniquement dans le scope du lab**
 
-### 11.3 Limites (important à expliquer)
-- Si la cible est derrière un **firewall** ou un **proxy**, la signature peut être trompée
-- Les signatures ne sont jamais 100% fiables
-- Un service containerisé peut brouiller les pistes
-
-**Réflexe pro** : confirmer via indices croisés  
-(OS guess + bannières + comportement services + TTL observé).
-
----
-
-## 12) sqlmap : automatiser les tests d’injection SQL (en lab autorisé)
-
-### 12.1 C’est quoi sqlmap ?
-`sqlmap` est un outil qui :
-- détecte automatiquement certaines injections SQL
-- identifie le DBMS (MySQL, PostgreSQL…)
-- peut (en contexte autorisé) automatiser l’exploration
-
-> Dans un cours, on l’utilise surtout pour **tester** et **démontrer** une vulnérabilité sur une cible **autorisée**.
-
-### 12.2 Pré-requis conceptuels
-- Comprendre l’URL et ses paramètres : `page.php?id=1`
-- Comprendre qu’une injection arrive quand l’entrée utilisateur est concaténée à une requête SQL sans protection
-- Notions de base : validation, requêtes préparées, ORM, WAF, logs
-
-### 12.3 Usage responsable (focus détection & identification)
-**Tester une URL avec paramètres** :
+### 15.2 Cibler une requête (3 façons)
+**A) URL avec paramètres (GET)**  
 ```bash
 sqlmap -u "http://<TARGET>/page.php?id=1" --batch
 ```
 
-**Choisir un paramètre précis** :
+**B) Requête HTTP brute (recommandé en vrai)**  
+Tu exportes une requête (DevTools/Burp) vers `request.txt` :
 ```bash
-sqlmap -u "http://<TARGET>/page.php?id=1&cat=2" -p id --batch
+sqlmap -r request.txt --batch
+```
+Avantage : garde cookies, headers, POST body, etc.
+
+**C) Injection dans l’URI (segment d’URL)**  
+Sqlmap peut tester le path si tu l’acceptes, ou via marqueur `*` :
+```bash
+sqlmap -u "http://<TARGET>/product/1*" --batch
 ```
 
-**Augmenter la profondeur des tests (lab)**
+### 15.3 Les options qui reviennent tout le temps
+- `--batch` : pas de questions interactives
+- `--dbs` : liste les bases
+- `-D <db>` : sélectionne une base
+- `--tables` : liste les tables de la base
+- `-T <table>` : sélectionne une table
+- `--columns` : liste les colonnes d’une table
+- `-C col1,col2` : sélectionne des colonnes
+- `--dump` : extrait (dump) des données
+- `--level` / `--risk` : augmente profondeur/agressivité des tests (lab)
+- `--flush-session` : repart à zéro si la session sqlmap garde de vieux résultats
+
+### 15.4 Enumération (DB → tables → colonnes)
+Lister les DBs :
 ```bash
-sqlmap -u "http://<TARGET>/page.php?id=1" --level=3 --risk=2 --batch
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch --dbs
 ```
 
-**Passer des cookies (si session)**
+Lister les tables d’une DB :
 ```bash
-sqlmap -u "http://<TARGET>/page.php?id=1" --cookie="PHPSESSID=..." --batch
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB_NAME>" --tables
 ```
 
-### 12.4 Bonnes pratiques avec sqlmap
-- Garder une trace : `-v 1..6`, outputs, notes
-- Ne pas lancer “tout et n’importe quoi” : ciblez le paramètre
-- Comprendre la preuve : *qu’est-ce qui prouve l’injection ?*
-- Côté défense : recommander requêtes préparées + validation + least privilege DB
+Lister les colonnes d’une table :
+```bash
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB_NAME>" -T "<TABLE>" --columns
+```
 
-> ⚠️ Je n’inclus volontairement pas ici les options orientées exfiltration (`--dump`) ou contournements (`--tamper`). En lab, votre encadrant vous dira exactement ce qui est attendu.
+### 15.5 Dump : extraire des données (ce que fait `--dump`)
+Dump d’une table :
+```bash
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB_NAME>" -T "<TABLE>" --dump
+```
+
+Dump ciblé (colonnes) :
+```bash
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB_NAME>" -T "<TABLE>" -C "id,username" --dump
+```
+
+Dump filtré (ex: une seule ligne) :
+```bash
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB_NAME>" -T "<TABLE>" --dump --where="id=1"
+```
+
+> **Pourquoi c’est important** : en pentest, tu évites le “dump tout” (bruit + hors-scope). En lab, c’est pédagogique.
+
+### 15.6 Comment sqlmap “dump” techniquement ?
+sqlmap ne “magique” pas une DB : il **exécute des requêtes SQL** via le point injectable.
+
+En gros :
+1) **Détection** : il envoie des payloads pour voir si l’entrée est interprétée comme SQL (ex: différence vrai/faux, erreurs, temps).
+2) **Fingerprint** : il identifie le DBMS (MySQL, Postgres…) grâce aux réponses (erreurs, fonctions, comportements).
+3) **Canal d’extraction** : il choisit une méthode selon ce qui marche :
+   - **UNION-based** (rapide si la réponse est affichée)
+   - **Error-based** (si erreurs retournées)
+   - **Boolean/time-based blind** (plus lent : il déduit bit par bit / caractère par caractère)
+4) **Enumération** :
+   - Sur MySQL/MariaDB, il interroge souvent `information_schema` (tables, colonnes…).
+   - Sur d’autres DBMS, l’équivalent (`pg_catalog`, etc.).
+5) **Extraction** :
+   - il reconstruit les valeurs (rows/columns) et les écrit en fichiers (TXT/CSV) côté client.
+
+### 15.7 Pourquoi ça marche même en “blind” ?
+Si l’appli ne renvoie pas directement les résultats SQL, sqlmap peut :
+- poser des questions “oui/non” (boolean-based) et déduire des caractères
+- ou mesurer un temps de réponse (time-based) pour déduire la vérité d’une condition
+
+C’est très lent… mais suffisant en lab.
+
+### 15.8 Bonnes pratiques (même en lab)
+- Toujours commencer par **détection minimale**
+- Préférer `-r request.txt` si cookies/auth/redirections
+- Documenter : injection point, DBMS, tables, preuve
+- Ne pas utiliser d’options d’évasion avancées hors besoin (non couvert ici)
 
 ---
 
-## 13) Exigences projet : scripts **1 ligne**, newline final, README
+## 16) Contraintes “Holberton style” : scripts 1 ligne + newline
 
-### 13.1 Scripts 1 ligne : comment y arriver ?
-Objectif : `wc -l file` doit afficher `1`.
+### 16.1 Script 1 ligne
+Tu peux faire beaucoup avec des pipes `|` et redirections `>`.
 
-Techniques :
-- Chaîner avec `;` ou `&&`
-- Utiliser des pipes `|`
-- Utiliser des substitutions `$(...)`
-
-Exemples (patterns) :
+Exemple :
 ```bash
-command1; command2
-command1 && command2
-command | grep ... | awk ...
+nmap -n -Pn <IP> | grep -E "/tcp\s+open" | cut -d/ -f1 | paste -sd ", " - > 0-ports.txt
 ```
 
-### 13.2 “Pourquoi un fichier doit finir par une newline ?”
-Parce que :
-- beaucoup d’outils UNIX attendent une fin de ligne pour traiter correctement la dernière ligne
-- POSIX et les conventions texte supposent qu’une ligne se termine par `\n`
-- éviter des comportements bizarres avec `cat`, `diff`, `grep`, git, etc.
-
-En pratique : ajoutez un retour à la ligne à la fin (Enter).
-
-### 13.3 README.md obligatoire
-Votre README doit expliquer :
-- objectif du projet
-- outils utilisés (ping/traceroute/nmap…)
-- comment exécuter vos scripts
-- exemples de sortie (si demandé)
-- avertissement “authorized lab only”
+### 16.2 Newline final
+Un fichier texte doit se terminer par `\n` :
+- certains outils traitent mal la dernière ligne sinon
+- ça évite des diffs bizarres
 
 ---
 
-## 14) Cheat sheet rapide (résumé opérationnel)
+## 17) Troubleshooting rapide (les bugs classiques)
 
-### Reachability
+### 17.1 `active.hbtn` ne marche pas
+- vérifier `/etc/hosts` (doublons)
+- `getent hosts active.hbtn`
+
+### 17.2 `nmap` semble “bloqué”
+- c’est normal sur certains scans (timing / retransmissions)
+- ajouter `-v` pour voir la progression
+- éviter de mélanger `@IP` (ça n’existe pas en nmap)
+
+### 17.3 `gobuster` “wildcard response”
+- exclure longueur (`--exclude-length`)
+- ou codes (`-s` + `-b ""`)
+
+### 17.4 sqlmap ne trouve rien
+- utiliser `-r request.txt` (cookies, POST, auth)
+- suivre redirects (`-u` + `--batch` le propose)
+- augmenter légèrement `--level=3 --risk=2` (lab)
+
+---
+
+## 18) Cheat sheet (résumé opérationnel)
+
+### Connectivité
 ```bash
-ping -c 1 <TARGET>
-nmap -Pn -p 80,443 <TARGET>
+ping -c 1 <IP>
+traceroute <IP>
 ```
 
-### Routing
+### Ports
 ```bash
-traceroute -n <TARGET>
-traceroute -T -n <TARGET>
+nmap -n -Pn <IP>
+nmap -n -Pn -sV -p <PORTS> <IP>
 ```
 
-### Nmap (bases)
+### Web
 ```bash
-nmap -Pn --open -sC -sV -oN out.txt <TARGET>
-nmap -p- -T4 <TARGET>
-sudo nmap -O <TARGET>
-```
-
-### Web fingerprinting
-```bash
-curl -I http://<TARGET>/
-whatweb http://<TARGET>/
+curl -I http://<HOST>/
+whatweb http://<HOST>/
+gobuster dir -u http://<HOST>/ -w /usr/share/wordlists/dirb/common.txt
+nikto -h http://<HOST>
 ```
 
 ### DNS
 ```bash
-dig <domain> A
-dig <domain> MX
-dig @<ns> <domain> AXFR
+dig A <DOMAIN>
+amass enum -d <DOMAIN>
 ```
 
-### SMTP
+### sqlmap (workflow)
 ```bash
-nc <TARGET> 25
-nmap -p 25,465,587 --script smtp-commands <TARGET>
-```
-
-### sqlmap (détection)
-```bash
-sqlmap -u "http://<TARGET>/page.php?id=1" --batch
-sqlmap -u "http://<TARGET>/page.php?id=1" -p id --level=3 --risk=2 --batch
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch --dbs
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB>" --tables
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB>" -T "<T>" --columns
+sqlmap -u "http://<TARGET>/page.php?id=1" --batch -D "<DB>" -T "<T>" -C "col1,col2" --dump
 ```
 
 ---
-
-## 15) Mini-exercices (pour apprendre, pas pour tricher)
-
-1) Explique la différence passive/active en 3 phrases.
-2) Sur votre cible, faites un scan Nmap **propre** et résumez :
-   - ports ouverts
-   - services + versions
-   - hypothèses sur l’OS (et pourquoi c’est une hypothèse)
-3) Identifiez une techno web avec Wappalyzer **puis** confirmez au moins un indice via `curl -I`.
-4) Faites un banner grabbing SMTP (si port ouvert) et listez les commandes d’extension vues après `EHLO`.
-5) Explique ce que `--level` et `--risk` changent dans sqlmap (sans parler d’exfiltration).
-
----
-
-## 16) Glossaire rapide
-- **Enumeration** : découverte détaillée (users, services, noms, endpoints…)
-- **Banner** : message d’accueil d’un service, souvent révélateur
-- **Fingerprinting** : identification par signatures/comportement
-- **NSE** : Nmap Scripting Engine (scripts de détection/énumération)
-- **Scope** : périmètre autorisé (IPs, domaines, temps, méthodes)
-
----
-
-### Fin
-Si tu veux, envoie-moi ensuite :
-- l’IP/hostname exact de `cyber_netsec_0x02`
-- 1 résultat Nmap (même partiel)
-et je t’aide à **interpréter** proprement (services → hypothèses → prochaines commandes).
