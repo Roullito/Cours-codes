@@ -15,9 +15,7 @@
 7. [Display filters : syntaxe + cheatsheet](#display-filters--syntaxe--cheatsheet)
 8. [Lire et analyser un paquet (méthode)](#lire-et-analyser-un-paquet-méthode)
 9. [Cas d’usage : reconnaître un scan Nmap](#cas-dusage--reconnaître-un-scan-nmap)
-10. [Tâches Holberton (0 → 8) : filtres prêts à coller](#tâches-holberton-0--8--filtres-prêts-à-coller)
-11. [Debug rapide si “je ne vois rien”](#debug-rapide-si-je-ne-vois-rien)
-12. [Mini-glossaire](#mini-glossaire)
+10. [Mini-glossaire](#mini-glossaire)
 
 ---
 
@@ -236,154 +234,348 @@ Quand tu ouvres un paquet, lis **du bas vers le haut** (couches), mais comprends
 
 ---
 
-## Tâches Holberton (0 → 8) : filtres prêts à coller
+# Wireshark x Nmap — Récap complet des scans & filtres (Holberton 0x05)
 
-### Règles de format (IMPORTANT pour l’autograder)
-L’énoncé dit : **“All your files must contain two lines”** et **finir par une newline**.
+> Objectif : comprendre **ce que tu vois** dans Wireshark, **pourquoi** on utilise ces filtres, et **ce qu’on en déduit** en pentest / défense.
 
-➡️ Fais simple :
-- **Ligne 1** : ton filtre
-- **Ligne 2** : vide (juste une newline)
+---
 
-Exemple correct :
-```text
-ip.addr==192.0.2.1
+## 1) Wireshark et Nmap : qui fait quoi ?
 
+### Wireshark (le microscope)
+Wireshark ne “hack” rien : il **observe**.
+- Il capture des paquets (trafic réseau brut).
+- Il les **disséque** (Ethernet → IP → TCP/UDP/ICMP → applis).
+- Il te permet de **filtrer**, **corréler**, **prouver** ce qu’un outil a envoyé/reçu.
+
+### Nmap (l’explorateur)
+Nmap est un outil d’exploration réseau :
+- Découverte d’hôtes (host discovery / ping sweeps)
+- Scan de ports (TCP/UDP)
+- Détection de services/versions (optionnel)
+- Scripts NSE (optionnel)
+
+➡️ **Pourquoi Nmap avant Wireshark ?**  
+Parce que Wireshark ne “crée” pas de trafic. Il faut **générer** un trafic (avec Nmap) puis l’analyser (avec Wireshark).  
+En pentest : Nmap te dit “quoi explorer”.  
+En défense : Wireshark te dit “ce qui s’est réellement passé sur le fil”.
+
+---
+
+## 2) Capture filters vs Display filters (super important)
+
+### Capture filter (BPF)
+Filtre **avant** d’enregistrer : réduit le bruit, économise CPU/RAM.  
+Exemple : `icmp` ou `udp port 53`.
+
+### Display filter (Wireshark)
+Filtre **après** capture : tu peux changer à volonté.  
+Exemple : `icmp.type==8`, `tcp.flags.syn==1`.
+
+➡️ Dans le projet Holberton, “your filter string” = **display filter** (comme `ip.addr==...` dans l’énoncé).
+
+---
+
+## 3) Méthode standard pour réussir chaque tâche
+
+1. **Start capture** sur la bonne interface (eth0/wlan0 qui “bouge”).
+2. Lance la commande Nmap / arp-scan.
+3. **Stop capture**
+4. Repère 1 paquet typique (colonne Protocol + Info + Length).
+5. Construis un filtre **générique** (sans IP fixes).
+6. Teste le filtre, puis écris-le dans `X-*.txt` (2 lignes, newline final).
+
+---
+
+## 4) Les filtres qu’on a utilisés (et ce qu’ils prouvent)
+
+> Note : on évite de filtrer par IP dans les fichiers, car le checker ne connaît pas tes IP.  
+> On cherche des **invariants** : flags, type/code ICMP, ports par défaut, tailles typiques, etc.
+
+---
+
+### Task 0 — `nmap -sO <target>` (IP protocol scan)
+**But :** tester les **protocoles IP** (champ “Protocol” dans IPv4), pas des ports.
+
+**Ce que tu vois :**
+- Des paquets IPv4 “minimalistes” envoyés vers la cible (parfois affichés “IPv4” non décodé)
+- Et souvent des réponses ICMP “Protocol unreachable” (type 3 code 2) selon l’OS cible
+
+**Filtre “proche du sujet” (si l’exemple montre ICMP len 34) :**
+- `ip.proto==1 && frame.len==34`  
+(= “paquet IPv4 dont Protocol=ICMP et taille minimale”)
+
+**Ce qu’on peut déduire :**
+- Certains protocoles IP passent / sont bloqués
+- Comportement de filtrage/pare-feu (réponses ICMP vs silence)
+
+**Valeur défense :**
+- Détecter des rafales de paquets IPv4 “inhabituels” et/ou ICMP code 2 en retour.
+
+---
+
+### Task 1 — `nmap -sS <target>` (TCP SYN scan / half-open)
+**But :** découvrir des ports TCP ouverts sans établir une connexion complète.
+
+**Signature réseau :**
+- L’attaquant envoie **SYN**
+- Cible répond : SYN/ACK (port ouvert) ou RST (fermé)
+- L’attaquant **ne termine pas** le handshake (souvent RST ensuite)
+
+**Filtre (SYN “pur” + signature window Nmap vue chez toi) :**
+- `tcp.flags.syn==1 && tcp.flags.ack==0 && tcp.window_size_value==1024`
+
+**Ce qu’on déduit en pentest :**
+- Liste de ports potentiellement ouverts/fermés (selon réponses)
+- Discrétion relative vs connect() (moins de traces applicatives)
+
+**Défense :**
+- Rafale de SYN sur beaucoup de ports = scan classique.
+- IDS/Firewall : détection de taux SYN élevé, pattern multi-ports.
+
+---
+
+### Task 2 — `nmap -sT <target>` (TCP Connect() scan)
+**But :** scanner en établissant une connexion TCP **complète** (handshake complet), via l’OS (connect()).
+
+**Signature :**
+- SYN → SYN/ACK → ACK (3-way handshake)  
+Puis fermeture rapide (RST/FIN) selon cas.
+
+**Filtre “checker-friendly” basé sur le hint window_size (exemple Win=64240) :**
+- `tcp.flags.syn==1 && tcp.flags.ack==0 && tcp.len==0 && tcp.window_size_value==64240`
+
+**Ce qu’on déduit :**
+- Très fiable, mais plus “bruyant” (logs applicatifs possibles)
+
+**Défense :**
+- Plus facile à tracer côté service (accept() côté serveur, logs, SIEM).
+
+---
+
+### Task 3 — `nmap -sF <target>` (TCP FIN scan)
+**But :** scan furtif basé sur des paquets FIN “anormaux” (pas une vraie fin de connexion).
+
+**Signature :**
+- FIN “pur” envoyé vers beaucoup de ports
+- Réponse souvent RST si port fermé ; silence si ouvert (selon OS)
+
+**Filtre :**
+- `tcp.flags.fin==1 && tcp.flags.syn==0 && tcp.flags.ack==0 && tcp.len==0 && tcp.window_size_value==1024`
+
+**Déductions :**
+- Fingerprinting possible (certains OS répondent différemment)
+- Peut contourner certains filtres simples
+
+**Défense :**
+- Rafale FIN vers de multiples ports = scan furtif typique.
+
+---
+
+### Task 4 — `nmap -sn -PS/-PA <subnet>` (TCP SYN Ping / TCP ACK Ping)
+**But :** découvrir quels hôtes sont “UP” sans faire un port scan complet.
+
+- `-PS` : envoie SYN vers un port (souvent 80 si choisi)
+- `-PA` : envoie ACK vers un port
+
+**Filtre simple qui couvre les deux (port 80 dans l’exemple) :**
+- `tcp.dstport==80 && ((tcp.flags.syn==1 && tcp.flags.ack==0) || (tcp.flags.ack==1 && tcp.flags.syn==0))`
+
+**Déductions :**
+- Host discovery efficace même si ICMP est filtré
+- Différentes politiques firewall selon SYN/ACK/RST
+
+**Défense :**
+- Sur un subnet, rafales probes vers le même port = découverte d’hôtes.
+
+---
+
+### Task 5 — `nmap -sU <target>` (UDP port scan)
+**But :** scanner des ports UDP.
+
+**Signature clé :**
+- Pour un port UDP fermé, la cible répond souvent :
+  - ICMP Destination unreachable / **Port unreachable** (type 3 code 3)
+
+**Filtre “exemple sujet” :**
+- `icmp.type==3 && icmp.code==3`
+
+**Déductions :**
+- UDP est plus “ambigu” : absence de réponse = ouvert OU filtré
+- ICMP code 3 = fermé (excellent signal)
+
+**Défense :**
+- Rafales UDP + rafales ICMP type 3 code 3 = scan UDP en cours.
+
+---
+
+### Task 6 — `nmap -sn -PU <subnet>` (UDP ping sweep)
+**But :** découvrir des hôtes via UDP (host discovery).
+
+**Signature :**
+- UDP vers port “sonde” (ex: **40125** dans l’énoncé)
+- Le payload peut varier selon l’environnement
+
+**Filtre robuste (celui qui marchait chez toi) :**
+- `udp.dstport==40125`
+
+**Piège important (LAN) :**
+Sur un réseau local, Nmap fait souvent **ARP discovery** par défaut → tu peux voir surtout `arp` si tu ne forces pas (ex: `--disable-arp-ping`).
+
+**Défense :**
+- Rafale UDP vers un port fixe sur tout un subnet = découverte d’hôtes.
+
+---
+
+### Task 7 — `nmap -sn -PE <subnet>` (ICMP ping sweep)
+**But :** découvrir les hôtes via ICMP Echo (ping).
+
+**Signature :**
+- Echo Request = ICMP type 8 (envoyé)
+- Echo Reply = ICMP type 0 (réponse)
+
+**Filtre “packets sent by command” :**
+- `icmp.type==8`
+
+**Défense :**
+- Rafale de ping sur /24 = sweep ICMP.
+
+---
+
+### Task 8 — `arp-scan -l` (ARP scanning)
+**But :** découvrir les machines sur le LAN via ARP (couche 2).
+
+**Signature :**
+- ARP request “Who has X? Tell Y”
+- opcode 1
+
+**Filtre :**
+- `arp.opcode==1`
+
+**Défense :**
+- Rafale d’ARP requests = scan LAN (réseau interne).
+
+---
+
+## 5) Pourquoi filtrer : à quoi ça sert vraiment ?
+
+### En pentest (offensif)
+Les filtres te servent à :
+- **valider** que ton outil fait bien ce que tu penses
+- distinguer “ça ne marche pas” vs “c’est filtré”
+- comprendre les réponses (RST, ICMP unreachable, silence)
+- faire du **troubleshooting** (interface, firewall local, NAT, etc.)
+- capturer des preuves (PCAP) pour un rapport
+
+### En défense (blue team)
+Les filtres te servent à :
+- détecter rapidement des patterns :
+  - rafale SYN multi-ports (scan TCP)
+  - rafale FIN/NULL/XMAS (scans furtifs)
+  - rafale ICMP echo (ping sweep)
+  - rafale ARP (scan LAN)
+  - rafale ICMP code 3 (scan UDP)
+- investiguer un incident :
+  - quelles IP ont scanné ? quels ports ? quelle durée ? quelle cadence ?
+- bâtir des règles IDS / SIEM et des alertes basées sur “signatures”
+
+---
+
+## 6) Suite logique : après ces scans, on fait quoi ?
+
+### Côté pentest (logique d’enchaînement)
+1) **Host discovery** (qui est vivant ?)  
+   `-sn` + (-PE / -PS / -PA / -PU) + ARP-scan sur LAN
+2) **Port scanning** (quelles portes ?)  
+   `-sS` (rapide, discret) puis `-sU` (UDP ciblé)
+3) **Version detection / services**  
+   `-sV` (quels services exacts ?)
+4) **OS fingerprinting**  
+   `-O` (si autorisé)
+5) **Enumeration / scripts**  
+   Nmap NSE (`--script`) ou outils dédiés (HTTP enum, SMB enum, etc.)
+6) **Exploitation / validation** (si scope le permet)  
+   Avec preuves, pas “à l’aveugle”.
+
+### Côté défense (logique d’investigation)
+1) Corréler :
+   - PCAP (Wireshark) + logs firewall + logs serveur + IDS
+2) Identifier :
+   - source, période, cadence, ports visés
+3) Bloquer / atténuer :
+   - rate limiting, firewall rules, segmentation, IDS signatures
+4) Durcir :
+   - fermer services inutiles, filtrer ICMP, limiter ARP spoofing, etc.
+
+---
+
+## 7) Tableau mémo (ultra utile)
+
+| Action | Commande | Signature réseau | Filtre “générique” |
+|---|---|---|---|
+| IP protocol scan | `nmap -sO` | probes IP + ICMP code 2 possible | `ip.proto==1 && frame.len==34` (si sujet) |
+| SYN scan | `nmap -sS` | SYN pur en rafale | `tcp.flags.syn==1 && tcp.flags.ack==0 && tcp.window_size_value==1024` |
+| Connect scan | `nmap -sT` | handshake complet | `tcp.flags.syn==1 && tcp.flags.ack==0 && tcp.window_size_value==64240` |
+| FIN scan | `nmap -sF` | FIN pur en rafale | `tcp.flags.fin==1 && tcp.flags.ack==0 && tcp.window_size_value==1024` |
+| TCP ping sweep | `nmap -sn -PS/-PA` | SYN ou ACK vers port fixe | `tcp.dstport==80 && (...)` |
+| UDP port scan | `nmap -sU` | ICMP port unreachable | `icmp.type==3 && icmp.code==3` |
+| UDP ping sweep | `nmap -sn -PU` | UDP vers 40125 | `udp.dstport==40125` |
+| ICMP ping sweep | `nmap -sn -PE` | Echo request | `icmp.type==8` |
+| ARP scan | `arp-scan -l` | ARP request broadcast | `arp.opcode==1` |
+
+---
+
+## 8) Conseils Wireshark (pour progresser vite)
+
+- **Follow → TCP Stream** : reconstituer une conversation (HTTP, etc.)
+- **Statistics → Conversations** : qui parle avec qui ? (top talkers)
+- **Statistics → IO Graphs** : voir un scan “en rafale” visuellement
+- **Expert Info** : repérer anomalies (segments missing, retransmissions)
+- Sauvegarder un PCAP : preuve / reporting / analyse offline
+
+---
+
+## 9) Éthique et cadre
+Ne scanne que :
+- tes machines
+- ton lab (TryHackMe, Holberton)
+- ou un scope explicitement autorisé
+
+---
+
+## 10) Commandes utiles (à garder sous la main)
+
+```bash
+# SYN scan
+sudo nmap -sS <target>
+
+# TCP connect scan
+sudo nmap -sT <target>
+
+# FIN scan
+sudo nmap -sF <target>
+
+# UDP scan
+sudo nmap -sU <target>
+
+# ICMP ping sweep
+sudo nmap -sn -PE <subnet>
+
+# TCP ping sweeps
+sudo nmap -sn -PS80 <subnet>
+sudo nmap -sn -PA80 <subnet>
+
+# UDP ping sweep (port de l’énoncé)
+sudo nmap -sn -PU40125 <subnet>
+
+# ARP scan LAN
+sudo arp-scan -l
 ```
 
 ---
 
-### 0. IP protocol scan (`nmap -sO <target>`)
+Fin.
 
-**Idée réseau**
-`-sO` itère sur le champ “IP protocol” et surveille notamment les ICMP “protocol unreachable” (type 3 code 2).
-
-Filtre robuste (probes + réponses typiques) :
-```text
-(icmp.type==3 && icmp.code==2) || (ip && !(ip.proto==6 || ip.proto==17 || ip.proto==1))
-
-```
-
-Fichier attendu : `0-ip_scan.txt`
-
----
-
-### 1. TCP SYN scan (`nmap -sS <target>`)
-
-Filtre :
-```text
-tcp.flags.syn==1 && tcp.flags.ack==0 && tcp.len==0
-
-```
-
-Fichier : `1-tcp_syn_scan.txt`
-
----
-
-### 2. TCP Connect() scan (`nmap -sT <target>`)
-
-Astuce pratique : le SYN scan Nmap est souvent détectable par une fenêtre TCP de **1024** (valeur connue dans l’écosystème Nmap).
-
-Filtre (SYN “non‑1024”) :
-```text
-tcp.flags.syn==1 && tcp.flags.ack==0 && tcp.len==0 && tcp.window_size_value!=1024
-
-```
-
-Fichier : `2-tcp_connect_scan.txt`
-
----
-
-### 3. TCP FIN scan (`nmap -sF <target>`)
-
-Filtre :
-```text
-tcp.flags.fin==1 && tcp.flags.syn==0 && tcp.flags.ack==0 && tcp.flags.reset==0
-
-```
-
-Fichier : `3-tcp_fin_scan.txt`
-
----
-
-### 4. TCP ping sweeps (host discovery)
-
-Nmap peut faire de la découverte d’hôtes via SYN ping (`-PS`) sur ports web (80/443).
-
-Filtre :
-```text
-tcp.flags.syn==1 && tcp.flags.ack==0 && (tcp.dstport==80 || tcp.dstport==443)
-
-```
-
-Fichier : `4-tcp_ping_sweeps.txt`
-
----
-
-### 5. UDP port scan (`nmap -sU -p200-300 <target>`)
-
-Filtre :
-```text
-(udp && udp.dstport>=200 && udp.dstport<=300) || (icmp.type==3 && icmp.code==3)
-
-```
-
-Fichier : `5-udp_port_scan.txt`
-
----
-
-### 6. UDP ping sweeps (`nmap -sn -PU <targets>`)
-
-Par défaut `-PU` utilise le port **40125**.
-
-Filtre :
-```text
-udp.dstport==40125 || (icmp.type==3 && icmp.code==3)
-
-```
-
-Fichier : `6-udp_ping_sweeps.txt`
-
----
-
-### 7. ICMP ping sweep (`nmap -sn -PE <targets>`)
-
-Filtre :
-```text
-(icmp.type==8 && icmp.code==0) || (icmp.type==0 && icmp.code==0)
-
-```
-
-Fichier : `7-icmp_ping_sweep.txt`
-
----
-
-### 8. ARP scanning (`nmap -sn -PR <targets>` sur LAN)
-
-Filtre :
-```text
-arp.opcode==1 || arp.opcode==2
-
-```
-
-Fichier : `8-arp_scanning.txt`
-
----
-
-## Debug rapide si “je ne vois rien”
-
-Checklist :
-
-1) **Bonne interface ?** (`wlan0` vs `eth0` vs `any`)
-2) **Tu captures au bon moment ?** start capture → lance `nmap` → stop
-3) **Tu utilises display filter (barre verte) ?** pas capture filter par erreur
-4) **Le trafic est local ?** ARP uniquement sur le LAN
-5) **Firewall/VPN** : ça peut changer ce que tu vois
-6) Test rapide :
- - `arp` (sur LAN)
- - `icmp` (ping)
- - `dns` (résolution)
- - `tcp` (navigation web)
 
 ---
 
