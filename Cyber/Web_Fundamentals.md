@@ -450,7 +450,7 @@ Le serveur doit répondre avec :
 ```bash
 sudo apt install curl
 sudo apt install sqlmap
-
+```
 ### Pourquoi “tous les fichiers finissent par une newline” ?
 Sur Unix, un “fichier texte” se termine traditionnellement par `\n`.  
 Sans newline :
@@ -462,7 +462,7 @@ Sans newline :
 ```bash
 #!/bin/bash
 curl -sS -I "http://$1" | head
-
+```
 > Astuce : tu peux souvent faire du “1-liner” puissant avec `curl | grep | awk | cut | sed`.
 
 ### Exemples éducatifs (à adapter à tes tâches)
@@ -471,22 +471,22 @@ curl -sS -I "http://$1" | head
 ```bash
 #!/bin/bash
 curl -sS -I "http://$1" | sed -n '1,20p'
-
+```
 #### 2) Voir le code HTTP final (avec redirections)
 ```bash
 #!/bin/bash
 curl -sS -o /dev/null -w "%{http_code}\n" -L "http://$1"
-
+```
 #### 3) Tester un endpoint JSON
 ```bash
 #!/bin/bash
 curl -sS "http://$1/api" -H "Accept: application/json" | head
-
+```
 #### 4) Déclencher un preflight CORS (OPTIONS)
 ```bash
 #!/bin/bash
 curl -sS -X OPTIONS "http://$1/api" -H "Origin: http://evil.local" -H "Access-Control-Request-Method: POST" -i | head -n 30
-
+```
 #### 5) Vérifier rapidement présence de quelques headers sécurité
 ```bash
 #!/bin/bash
