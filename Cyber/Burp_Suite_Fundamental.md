@@ -1,12 +1,3 @@
-🧰 Burp Suite – Vue d’ensemble visuelle
-🔌 Proxy & Interception HTTP(S)
-🕷️ Spider / Crawler (Cartographie de l’application)
-🔁 Repeater (Analyse manuelle fine)
-🎯 Intruder (Automatisation contrôlée)
-🤖 Scanner & résultats
-
----
-
 # Burp Suite – Fundamentals  
 🎓 Holberton School | Cybersecurity  
 🧠 Niveau : Débutant → Intermédiaire  
